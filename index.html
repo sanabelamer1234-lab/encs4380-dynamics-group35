@@ -12,6 +12,7 @@
   <h1>Dynamic Characteristics Toolkit</h1>
   <h2>Module 1: First-Order Response</h2>
 
+  <!-- Time Constant Slider -->
   <label>
     Time Constant (τ):
     <span id="tauValue">2</span> s
@@ -20,22 +21,38 @@
   <input type="range" id="tau"
          min="0.5" max="10" step="0.5" value="2">
 
+  <!-- Gain Slider -->
+  <br><br>
+  <label>
+    Gain (K):
+    <span id="kValue">1</span>
+  </label>
+
+  <input type="range" id="gain"
+         min="0.5" max="5" step="0.5" value="1">
+
+  <!-- Response Plot -->
   <div id="plot"></div>
 
   <script>
     const slider = document.getElementById("tau");
+    const gainSlider = document.getElementById("gain");
 
     function updatePlot() {
       const tau = Number(slider.value);
+      const K = Number(gainSlider.value);
+
       document.getElementById("tauValue").textContent = tau;
+      document.getElementById("kValue").textContent = K;
 
       const t = [];
       const y = [];
 
+      // Calculate first-order step response
       for (let i = 0; i <= 200; i++) {
         const time = i * 5 * tau / 200;
         t.push(time);
-        y.push(1 - Math.exp(-time / tau));
+        y.push(K * (1 - Math.exp(-time / tau)));
       }
 
       Plotly.react("plot", [
@@ -48,7 +65,10 @@
         },
         {
           x: [tau, 3 * tau],
-          y: [1 - Math.exp(-1), 1 - Math.exp(-3)],
+          y: [
+            K * (1 - Math.exp(-1)),
+            K * (1 - Math.exp(-3))
+          ],
           type: "scatter",
           mode: "markers+text",
           text: ["63.2%", "95%"],
@@ -58,11 +78,17 @@
       ], {
         title: "First-Order Step Response",
         xaxis: {title: "Time (s)"},
-        yaxis: {title: "Sensor Output", range: [0, 1.1]}
+        yaxis: {
+          title: "Sensor Output",
+          range: [0, K * 1.1]
+        }
       }, {responsive: true});
     }
 
+    // Update plot when sliders change
     slider.addEventListener("input", updatePlot);
+    gainSlider.addEventListener("input", updatePlot);
+
     updatePlot();
   </script>
 </body>
