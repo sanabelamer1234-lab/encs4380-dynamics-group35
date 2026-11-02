@@ -8,12 +8,13 @@
   <title>ENCS4380 Dynamics Toolkit</title>
   <script src="https://cdn.plot.ly/plotly-3.1.0.min.js"></script>
 </head>
+
 <body>
   <h1>Dynamic Characteristics Toolkit</h1>
   <h2>Module 1: First-Order Response</h2>
 
   <!-- Time Constant Slider -->
-  <label>
+  <label for="tau">
     Time Constant (τ):
     <span id="tauValue">2</span> s
   </label>
@@ -22,7 +23,7 @@
 
   <!-- Gain Slider -->
   <br><br>
-  <label>
+  <label for="gain">
     Gain (K):
     <span id="kValue">1</span>
   </label>
@@ -40,19 +41,57 @@
   <!-- Response Plot -->
   <div id="plot"></div>
 
+  <!-- Ramp Information -->
+  <div id="rampInfo" style="display: none;">
+    <h3>Ramp Response Information</h3>
+
+    <p>
+      Ramp Lag:
+      <strong>
+        <span id="rampLag">2.00</span> s
+      </strong>
+    </p>
+
+    <p>
+      Steady-State Error:
+      <strong>
+        <span id="steadyError">2.00</span>
+      </strong>
+    </p>
+  </div>
+
   <script>
     const tauSlider = document.getElementById("tau");
     const gainSlider = document.getElementById("gain");
     const inputType = document.getElementById("inputType");
+    const rampInfo = document.getElementById("rampInfo");
 
     function updatePlot() {
       const tau = Number(tauSlider.value);
       const K = Number(gainSlider.value);
       const type = inputType.value;
 
+      // Update displayed slider values
       document.getElementById("tauValue").textContent = tau;
       document.getElementById("kValue").textContent = K;
 
+      // Ramp Lag and Steady-State Error
+      if (type === "ramp") {
+        rampInfo.style.display = "block";
+
+        const rampLag = tau;
+        const steadyError = K * tau;
+
+        document.getElementById("rampLag").textContent =
+          rampLag.toFixed(2);
+
+        document.getElementById("steadyError").textContent =
+          steadyError.toFixed(2);
+      } else {
+        rampInfo.style.display = "none";
+      }
+
+      // Arrays for plotting
       const t = [];
       const y = [];
       const ideal = [];
@@ -62,18 +101,30 @@
         t.push(time);
 
         if (type === "step") {
-          // Unit step input: A = 1
-          y.push(K * (1 - Math.exp(-time / tau)));
+
+          // Unit Step Response
+          const output = K * (
+            1 - Math.exp(-time / tau)
+          );
+
+          y.push(output);
           ideal.push(K);
+
         } else {
-          // Unit ramp input: x(t) = t
-          y.push(K * (
-            time - tau * (1 - Math.exp(-time / tau))
-          ));
+
+          // Unit Ramp Response
+          const output = K * (
+            time - tau * (
+              1 - Math.exp(-time / tau)
+            )
+          );
+
+          y.push(output);
           ideal.push(K * time);
         }
       }
 
+      // Sensor output curve
       const traces = [
         {
           x: t,
@@ -85,6 +136,8 @@
       ];
 
       if (type === "step") {
+
+        // Validation points
         traces.push({
           x: [tau, 3 * tau],
           y: [
@@ -97,32 +150,56 @@
           textposition: "top center",
           name: "Validation Points"
         });
+
       } else {
+
+        // Ideal ramp output
         traces.push({
           x: t,
           y: ideal,
           type: "scatter",
           mode: "lines",
-          line: {dash: "dash"},
-          name: "Ideal Output (K × Input)"
+          line: {
+            dash: "dash",
+            color: "orange"
+          },
+          name: "Ideal Output (K x Input)"
         });
       }
 
+      // Draw the plot
       Plotly.react("plot", traces, {
         title: type === "step"
           ? "First-Order Step Response"
           : "First-Order Ramp Response",
-        xaxis: {title: "Time (s)"},
-        yaxis: {title: "Sensor Output"},
-        margin: {t: 60},
-        legend: {orientation: "h", y: -0.25}
-      }, {responsive: true});
+
+        xaxis: {
+          title: "Time (s)"
+        },
+
+        yaxis: {
+          title: "Sensor Output"
+        },
+
+        margin: {
+          t: 60
+        },
+
+        legend: {
+          orientation: "h",
+          y: -0.25
+        }
+      }, {
+        responsive: true
+      });
     }
 
+    // Update plots automatically
     tauSlider.addEventListener("input", updatePlot);
     gainSlider.addEventListener("input", updatePlot);
     inputType.addEventListener("change", updatePlot);
 
+    // Initial plot
     updatePlot();
   </script>
 </body>
