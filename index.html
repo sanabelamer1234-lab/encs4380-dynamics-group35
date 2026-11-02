@@ -7,6 +7,7 @@
         content="width=device-width, initial-scale=1.0">
   <title>ENCS4380 Dynamics Toolkit</title>
   <script src="https://cdn.plot.ly/plotly-3.1.0.min.js"></script>
+
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -32,6 +33,16 @@
 
     input[type="range"] {
       max-width: 100%;
+    }
+
+    button {
+      padding: 8px 14px;
+      margin: 8px;
+      cursor: pointer;
+    }
+
+    #predictionResult {
+      font-weight: bold;
     }
   </style>
 </head>
@@ -69,6 +80,29 @@
       <option value="step">Step</option>
       <option value="ramp">Ramp</option>
     </select>
+  </div>
+
+  <!-- Predict, then Check -->
+  <div class="info">
+    <h3>Predict, then Check</h3>
+
+    <p>
+      What happens to the sensor response
+      when the time constant (τ) increases?
+    </p>
+
+    <select id="prediction">
+      <option value="">Select your prediction</option>
+      <option value="faster">Faster response</option>
+      <option value="slower">Slower response</option>
+      <option value="same">No change</option>
+    </select>
+
+    <button type="button" id="checkPrediction">
+      Check Prediction
+    </button>
+
+    <p id="predictionResult" aria-live="polite"></p>
   </div>
 
   <!-- Ramp Information -->
@@ -135,7 +169,6 @@
 
       // Calculate logarithmic error slope
       const slope = -1 / tau;
-
       document.getElementById("slopeValue").textContent =
         slope.toFixed(4);
 
@@ -164,7 +197,6 @@
 
       for (let i = 0; i <= 200; i++) {
         const time = i * 5 * tau / 200;
-
         t.push(time);
 
         if (type === "step") {
@@ -298,7 +330,30 @@
       });
     }
 
-    // Update plots automatically
+    // Predict, then Check functionality
+    const predictionSelect =
+      document.getElementById("prediction");
+
+    const predictionResult =
+      document.getElementById("predictionResult");
+
+    document.getElementById("checkPrediction")
+      .addEventListener("click", function () {
+        const answer = predictionSelect.value;
+
+        if (answer === "") {
+          predictionResult.textContent =
+            "Please select a prediction first.";
+        } else if (answer === "slower") {
+          predictionResult.textContent =
+            "Correct! Increasing tau makes the sensor respond more slowly. Now increase tau using the slider and observe the curve.";
+        } else {
+          predictionResult.textContent =
+            "Not quite. Increasing tau makes the sensor respond more slowly. Try changing tau and observe the response.";
+        }
+      });
+
+    // Live plot updates
     tauSlider.addEventListener("input", updatePlot);
     gainSlider.addEventListener("input", updatePlot);
     inputType.addEventListener("change", updatePlot);
