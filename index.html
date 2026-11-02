@@ -11,7 +11,9 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      margin: 20px;
+      margin: 20px auto;
+      padding: 0 14px;
+      max-width: 1100px;
       line-height: 1.6;
     }
 
@@ -44,6 +46,47 @@
     #predictionResult {
       font-weight: bold;
     }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+
+    th, td {
+      padding: 10px;
+      border: 1px solid #ccc;
+      text-align: center;
+    }
+
+    th {
+      background: #e2eaf5;
+    }
+
+    .table-container {
+      overflow-x: auto;
+    }
+
+    .pass {
+      color: green;
+      font-weight: bold;
+    }
+
+    .fail {
+      color: red;
+      font-weight: bold;
+    }
+
+    @media (max-width: 600px) {
+      .plot {
+        height: 350px;
+      }
+
+      th, td {
+        padding: 6px;
+        font-size: 12px;
+      }
+    }
   </style>
 </head>
 
@@ -59,7 +102,8 @@
     </label>
 
     <input type="range" id="tau"
-           min="0.5" max="10" step="0.5" value="2">
+           min="0.5" max="10"
+           step="0.5" value="2">
   </div>
 
   <!-- Gain Slider -->
@@ -70,12 +114,14 @@
     </label>
 
     <input type="range" id="gain"
-           min="0.5" max="5" step="0.5" value="1">
+           min="0.5" max="5"
+           step="0.5" value="1">
   </div>
 
   <!-- Input Type -->
   <div class="control">
     <label for="inputType">Input Type:</label>
+
     <select id="inputType">
       <option value="step">Step</option>
       <option value="ramp">Ramp</option>
@@ -144,19 +190,133 @@
       </strong>
     </p>
 
-    <p>
-      The graph below uses a logarithmic Y-axis.
-    </p>
+    <p>The graph below uses a logarithmic Y-axis.</p>
   </div>
 
   <!-- Log Error Fraction Plot -->
   <div id="errorPlot" class="plot"></div>
+
+  <!-- Validation Test 1 -->
+  <div class="info">
+    <h3>Validation Test 1: First-Order Step Response</h3>
+
+    <p>
+      The sensor should reach approximately
+      63.2% of its final value at t = τ
+      and 95% at t = 3τ.
+    </p>
+
+    <p>
+      Current Gain:
+      <strong><span id="validationK">1</span></strong>
+      |
+      Current τ:
+      <strong><span id="validationTau">2</span> s</strong>
+    </p>
+
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Test</th>
+            <th>Expected</th>
+            <th>Calculated</th>
+            <th>Error</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr>
+            <td>y(τ) = 63.2% of KA</td>
+            <td id="expected1">0.6320</td>
+            <td id="calculated1">0.6321</td>
+            <td id="error1">0.0001</td>
+            <td id="status1">PASS</td>
+          </tr>
+
+          <tr>
+            <td>y(3τ) = 95% of KA</td>
+            <td id="expected2">0.9500</td>
+            <td id="calculated2">0.9502</td>
+            <td id="error2">0.0002</td>
+            <td id="status2">PASS</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      Tolerance: 0.5% of the final step value (KA).
+    </p>
+
+    <p>
+      <strong>Overall Result:</strong>
+      <span id="overallStatus">PASS</span>
+    </p>
+  </div>
 
   <script>
     const tauSlider = document.getElementById("tau");
     const gainSlider = document.getElementById("gain");
     const inputType = document.getElementById("inputType");
     const rampInfo = document.getElementById("rampInfo");
+
+    // Exact closed-form first-order response
+    function stepResponse(t, K, tau) {
+      return K * (1 - Math.exp(-t / tau));
+    }
+
+    // Update one validation table row
+    function setValidationRow(number, expected, calculated, tolerance) {
+      const error = Math.abs(calculated - expected);
+      const passed = error <= tolerance;
+
+      document.getElementById("expected" + number).textContent =
+        expected.toFixed(4);
+
+      document.getElementById("calculated" + number).textContent =
+        calculated.toFixed(4);
+
+      document.getElementById("error" + number).textContent =
+        error.toFixed(6);
+
+      const status = document.getElementById("status" + number);
+      status.textContent = passed ? "PASS" : "FAIL";
+      status.className = passed ? "pass" : "fail";
+
+      return passed;
+    }
+
+    function updateValidation(K, tau) {
+      const finalValue = K;
+      const tolerance = 0.005 * finalValue;
+
+      // Expected percentages provided by the lecture
+      const expected1 = 0.632 * finalValue;
+      const expected2 = 0.950 * finalValue;
+
+      // Actual values computed using the response function
+      const calculated1 = stepResponse(tau, K, tau);
+      const calculated2 = stepResponse(3 * tau, K, tau);
+
+      const pass1 = setValidationRow(
+        1, expected1, calculated1, tolerance
+      );
+
+      const pass2 = setValidationRow(
+        2, expected2, calculated2, tolerance
+      );
+
+      document.getElementById("validationK").textContent = K;
+      document.getElementById("validationTau").textContent = tau;
+
+      const overall = document.getElementById("overallStatus");
+      const allPassed = pass1 && pass2;
+
+      overall.textContent = allPassed ? "PASS" : "FAIL";
+      overall.className = allPassed ? "pass" : "fail";
+    }
 
     function updatePlot() {
       const tau = Number(tauSlider.value);
@@ -169,6 +329,7 @@
 
       // Calculate logarithmic error slope
       const slope = -1 / tau;
+
       document.getElementById("slopeValue").textContent =
         slope.toFixed(4);
 
@@ -200,27 +361,22 @@
         t.push(time);
 
         if (type === "step") {
-          // Unit step response
-          const output = K * (
-            1 - Math.exp(-time / tau)
-          );
-
+          const output = stepResponse(time, K, tau);
           y.push(output);
           ideal.push(K);
 
         } else {
           // Unit ramp response
           const output = K * (
-            time - tau * (
-              1 - Math.exp(-time / tau)
-            )
+            time - tau *
+            (1 - Math.exp(-time / tau))
           );
 
           y.push(output);
           ideal.push(K * time);
         }
 
-        // Normalized first-order STEP error
+        // Normalized first-order step error
         errorTime.push(time);
         errorFraction.push(
           Math.exp(-time / tau)
@@ -239,12 +395,11 @@
       ];
 
       if (type === "step") {
-        // Validation points: 63.2% and 95%
         traces.push({
           x: [tau, 3 * tau],
           y: [
-            K * (1 - Math.exp(-1)),
-            K * (1 - Math.exp(-3))
+            stepResponse(tau, K, tau),
+            stepResponse(3 * tau, K, tau)
           ],
           type: "scatter",
           mode: "markers+text",
@@ -254,7 +409,6 @@
         });
 
       } else {
-        // Ideal ramp output
         traces.push({
           x: t,
           y: ideal,
@@ -328,6 +482,9 @@
       }, {
         responsive: true
       });
+
+      // Update validation table
+      updateValidation(K, tau);
     }
 
     // Predict, then Check functionality
