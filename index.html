@@ -103,7 +103,11 @@
 
     <input type="range" id="tau"
            min="0.5" max="10"
-           step="0.5" value="2">
+           step="0.5" value="2" disabled>
+
+    <p id="tauHint">
+      Make your prediction first to unlock the τ slider.
+    </p>
   </div>
 
   <!-- Gain Slider -->
@@ -190,7 +194,9 @@
       </strong>
     </p>
 
-    <p>The graph below uses a logarithmic Y-axis.</p>
+    <p>
+      The graph below uses a logarithmic Y-axis.
+    </p>
   </div>
 
   <!-- Log Error Fraction Plot -->
@@ -262,41 +268,48 @@
     const inputType = document.getElementById("inputType");
     const rampInfo = document.getElementById("rampInfo");
 
-    // Exact closed-form first-order response
+    // First-order step response
     function stepResponse(t, K, tau) {
       return K * (1 - Math.exp(-t / tau));
     }
 
-    // Update one validation table row
-    function setValidationRow(number, expected, calculated, tolerance) {
+    // Update one validation row
+    function setValidationRow(
+      number, expected, calculated, tolerance
+    ) {
       const error = Math.abs(calculated - expected);
       const passed = error <= tolerance;
 
-      document.getElementById("expected" + number).textContent =
-        expected.toFixed(4);
+      document.getElementById(
+        "expected" + number
+      ).textContent = expected.toFixed(4);
 
-      document.getElementById("calculated" + number).textContent =
-        calculated.toFixed(4);
+      document.getElementById(
+        "calculated" + number
+      ).textContent = calculated.toFixed(4);
 
-      document.getElementById("error" + number).textContent =
-        error.toFixed(6);
+      document.getElementById(
+        "error" + number
+      ).textContent = error.toFixed(6);
 
-      const status = document.getElementById("status" + number);
+      const status = document.getElementById(
+        "status" + number
+      );
+
       status.textContent = passed ? "PASS" : "FAIL";
       status.className = passed ? "pass" : "fail";
 
       return passed;
     }
 
+    // Validation Test 1
     function updateValidation(K, tau) {
       const finalValue = K;
       const tolerance = 0.005 * finalValue;
 
-      // Expected percentages provided by the lecture
       const expected1 = 0.632 * finalValue;
       const expected2 = 0.950 * finalValue;
 
-      // Actual values computed using the response function
       const calculated1 = stepResponse(tau, K, tau);
       const calculated2 = stepResponse(3 * tau, K, tau);
 
@@ -308,82 +321,110 @@
         2, expected2, calculated2, tolerance
       );
 
-      document.getElementById("validationK").textContent = K;
-      document.getElementById("validationTau").textContent = tau;
+      document.getElementById(
+        "validationK"
+      ).textContent = K;
 
-      const overall = document.getElementById("overallStatus");
+      document.getElementById(
+        "validationTau"
+      ).textContent = tau;
+
+      const overall = document.getElementById(
+        "overallStatus"
+      );
+
       const allPassed = pass1 && pass2;
 
       overall.textContent = allPassed ? "PASS" : "FAIL";
       overall.className = allPassed ? "pass" : "fail";
     }
 
+    // Update all plots and calculations
     function updatePlot() {
       const tau = Number(tauSlider.value);
       const K = Number(gainSlider.value);
       const type = inputType.value;
 
-      // Update displayed slider values
-      document.getElementById("tauValue").textContent = tau;
-      document.getElementById("kValue").textContent = K;
+      document.getElementById(
+        "tauValue"
+      ).textContent = tau;
 
-      // Calculate logarithmic error slope
+      document.getElementById(
+        "kValue"
+      ).textContent = K;
+
+      // Logarithmic error slope
       const slope = -1 / tau;
 
-      document.getElementById("slopeValue").textContent =
-        slope.toFixed(4);
+      document.getElementById(
+        "slopeValue"
+      ).textContent = slope.toFixed(4);
 
-      // Ramp Lag and Steady-State Error
+      // Ramp information
       if (type === "ramp") {
         rampInfo.style.display = "block";
 
         const rampLag = tau;
         const steadyError = K * tau;
 
-        document.getElementById("rampLag").textContent =
-          rampLag.toFixed(2);
+        document.getElementById(
+          "rampLag"
+        ).textContent = rampLag.toFixed(2);
 
-        document.getElementById("steadyError").textContent =
-          steadyError.toFixed(2);
+        document.getElementById(
+          "steadyError"
+        ).textContent = steadyError.toFixed(2);
+
       } else {
         rampInfo.style.display = "none";
       }
 
-      // Arrays for response and error plots
+      // Main plot arrays
       const t = [];
       const y = [];
       const ideal = [];
+
+      // Error plot arrays
       const errorTime = [];
       const errorFraction = [];
 
+      // FIXED time range: 0 to 50 seconds
       for (let i = 0; i <= 200; i++) {
-        const time = i * 5 * tau / 200;
+        const time = i * 50 / 200;
+
         t.push(time);
 
         if (type === "step") {
           const output = stepResponse(time, K, tau);
+
           y.push(output);
           ideal.push(K);
 
         } else {
           // Unit ramp response
           const output = K * (
-            time - tau *
-            (1 - Math.exp(-time / tau))
+            time - tau * (
+              1 - Math.exp(-time / tau)
+            )
           );
 
           y.push(output);
           ideal.push(K * time);
         }
+      }
 
-        // Normalized first-order step error
+      // Separate time scale for error plot:
+      // 0 to 5 tau
+      for (let i = 0; i <= 200; i++) {
+        const time = i * 5 * tau / 200;
+
         errorTime.push(time);
         errorFraction.push(
           Math.exp(-time / tau)
         );
       }
 
-      // Main sensor output curve
+      // Main output curve
       const traces = [
         {
           x: t,
@@ -395,6 +436,7 @@
       ];
 
       if (type === "step") {
+        // 63.2% and 95% markers
         traces.push({
           x: [tau, 3 * tau],
           y: [
@@ -409,6 +451,7 @@
         });
 
       } else {
+        // Ideal ramp
         traces.push({
           x: t,
           y: ideal,
@@ -422,14 +465,15 @@
         });
       }
 
-      // Draw main response plot
+      // Main response plot
       Plotly.react("plot", traces, {
         title: type === "step"
           ? "First-Order Step Response"
           : "First-Order Ramp Response",
 
         xaxis: {
-          title: "Time (s)"
+          title: "Time (s)",
+          range: [0, 50]
         },
 
         yaxis: {
@@ -449,7 +493,7 @@
         responsive: true
       });
 
-      // Draw Log Error Fraction Plot
+      // Log Error Fraction Plot
       Plotly.react("errorPlot", [
         {
           x: errorTime,
@@ -483,34 +527,48 @@
         responsive: true
       });
 
-      // Update validation table
+      // Validation
       updateValidation(K, tau);
     }
 
-    // Predict, then Check functionality
+    // Predict, then Check
     const predictionSelect =
       document.getElementById("prediction");
 
     const predictionResult =
       document.getElementById("predictionResult");
 
-    document.getElementById("checkPrediction")
-      .addEventListener("click", function () {
-        const answer = predictionSelect.value;
+    const checkButton =
+      document.getElementById("checkPrediction");
 
-        if (answer === "") {
-          predictionResult.textContent =
-            "Please select a prediction first.";
-        } else if (answer === "slower") {
-          predictionResult.textContent =
-            "Correct! Increasing tau makes the sensor respond more slowly. Now increase tau using the slider and observe the curve.";
-        } else {
-          predictionResult.textContent =
-            "Not quite. Increasing tau makes the sensor respond more slowly. Try changing tau and observe the response.";
-        }
-      });
+    checkButton.addEventListener("click", function () {
+      const answer = predictionSelect.value;
 
-    // Live plot updates
+      if (answer === "") {
+        predictionResult.textContent =
+          "Please select a prediction first.";
+        return;
+      }
+
+      // Unlock tau slider after prediction
+      tauSlider.disabled = false;
+
+      document.getElementById(
+        "tauHint"
+      ).textContent =
+        "Prediction checked! Change τ and observe the response.";
+
+      if (answer === "slower") {
+        predictionResult.textContent =
+          "Correct! Increasing τ makes the sensor respond more slowly. Now increase τ and observe the curve.";
+
+      } else {
+        predictionResult.textContent =
+          "Not quite. Increasing τ makes the sensor respond more slowly. Try increasing τ and observe the curve.";
+      }
+    });
+
+    // Live updates
     tauSlider.addEventListener("input", updatePlot);
     gainSlider.addEventListener("input", updatePlot);
     inputType.addEventListener("change", updatePlot);
