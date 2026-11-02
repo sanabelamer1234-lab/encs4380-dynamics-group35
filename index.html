@@ -7,6 +7,33 @@
         content="width=device-width, initial-scale=1.0">
   <title>ENCS4380 Dynamics Toolkit</title>
   <script src="https://cdn.plot.ly/plotly-3.1.0.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      line-height: 1.6;
+    }
+
+    .control {
+      margin: 16px 0;
+    }
+
+    .plot {
+      width: 100%;
+      height: 420px;
+    }
+
+    .info {
+      padding: 15px;
+      margin: 15px 0;
+      background: #f1f6fc;
+      border-radius: 8px;
+    }
+
+    input[type="range"] {
+      max-width: 100%;
+    }
+  </style>
 </head>
 
 <body>
@@ -14,51 +41,82 @@
   <h2>Module 1: First-Order Response</h2>
 
   <!-- Time Constant Slider -->
-  <label for="tau">
-    Time Constant (τ):
-    <span id="tauValue">2</span> s
-  </label>
-  <input type="range" id="tau"
-         min="0.5" max="10" step="0.5" value="2">
+  <div class="control">
+    <label for="tau">
+      Time Constant (τ):
+      <strong><span id="tauValue">2</span> s</strong>
+    </label>
+
+    <input type="range" id="tau"
+           min="0.5" max="10" step="0.5" value="2">
+  </div>
 
   <!-- Gain Slider -->
-  <br><br>
-  <label for="gain">
-    Gain (K):
-    <span id="kValue">1</span>
-  </label>
-  <input type="range" id="gain"
-         min="0.5" max="5" step="0.5" value="1">
+  <div class="control">
+    <label for="gain">
+      Gain (K):
+      <strong><span id="kValue">1</span></strong>
+    </label>
+
+    <input type="range" id="gain"
+           min="0.5" max="5" step="0.5" value="1">
+  </div>
 
   <!-- Input Type -->
-  <br><br>
-  <label for="inputType">Input Type:</label>
-  <select id="inputType">
-    <option value="step">Step</option>
-    <option value="ramp">Ramp</option>
-  </select>
-
-  <!-- Response Plot -->
-  <div id="plot"></div>
+  <div class="control">
+    <label for="inputType">Input Type:</label>
+    <select id="inputType">
+      <option value="step">Step</option>
+      <option value="ramp">Ramp</option>
+    </select>
+  </div>
 
   <!-- Ramp Information -->
-  <div id="rampInfo" style="display: none;">
+  <div id="rampInfo" class="info" style="display: none;">
     <h3>Ramp Response Information</h3>
 
     <p>
       Ramp Lag:
-      <strong>
-        <span id="rampLag">2.00</span> s
-      </strong>
+      <strong><span id="rampLag">2.00</span> s</strong>
     </p>
 
     <p>
       Steady-State Error:
-      <strong>
-        <span id="steadyError">2.00</span>
-      </strong>
+      <strong><span id="steadyError">2.00</span></strong>
     </p>
   </div>
+
+  <!-- Main Response Plot -->
+  <div id="plot" class="plot"></div>
+
+  <!-- Log Error Fraction Information -->
+  <div class="info">
+    <h3>Log Error Fraction Analysis</h3>
+
+    <p>
+      Normalized Step Error:
+      E(t) = exp(-t / τ)
+    </p>
+
+    <p>
+      Natural Log:
+      ln(E(t)) = -t / τ
+    </p>
+
+    <p>
+      Slope of ln(E) vs. time:
+      <strong>
+        <span id="slopeValue">-0.5000</span> s⁻¹
+      </strong>
+    </p>
+
+    <p>
+      The graph below uses a logarithmic Y-axis.
+    </p>
+  </div>
+
+  <!-- Log Error Fraction Plot -->
+  <div id="errorPlot" class="plot"></div>
 
   <script>
     const tauSlider = document.getElementById("tau");
@@ -74,6 +132,12 @@
       // Update displayed slider values
       document.getElementById("tauValue").textContent = tau;
       document.getElementById("kValue").textContent = K;
+
+      // Calculate logarithmic error slope
+      const slope = -1 / tau;
+
+      document.getElementById("slopeValue").textContent =
+        slope.toFixed(4);
 
       // Ramp Lag and Steady-State Error
       if (type === "ramp") {
@@ -91,18 +155,20 @@
         rampInfo.style.display = "none";
       }
 
-      // Arrays for plotting
+      // Arrays for response and error plots
       const t = [];
       const y = [];
       const ideal = [];
+      const errorTime = [];
+      const errorFraction = [];
 
       for (let i = 0; i <= 200; i++) {
         const time = i * 5 * tau / 200;
+
         t.push(time);
 
         if (type === "step") {
-
-          // Unit Step Response
+          // Unit step response
           const output = K * (
             1 - Math.exp(-time / tau)
           );
@@ -111,8 +177,7 @@
           ideal.push(K);
 
         } else {
-
-          // Unit Ramp Response
+          // Unit ramp response
           const output = K * (
             time - tau * (
               1 - Math.exp(-time / tau)
@@ -122,9 +187,15 @@
           y.push(output);
           ideal.push(K * time);
         }
+
+        // Normalized first-order STEP error
+        errorTime.push(time);
+        errorFraction.push(
+          Math.exp(-time / tau)
+        );
       }
 
-      // Sensor output curve
+      // Main sensor output curve
       const traces = [
         {
           x: t,
@@ -136,8 +207,7 @@
       ];
 
       if (type === "step") {
-
-        // Validation points
+        // Validation points: 63.2% and 95%
         traces.push({
           x: [tau, 3 * tau],
           y: [
@@ -152,7 +222,6 @@
         });
 
       } else {
-
         // Ideal ramp output
         traces.push({
           x: t,
@@ -167,7 +236,7 @@
         });
       }
 
-      // Draw the plot
+      // Draw main response plot
       Plotly.react("plot", traces, {
         title: type === "step"
           ? "First-Order Step Response"
@@ -182,12 +251,47 @@
         },
 
         margin: {
-          t: 60
+          t: 60,
+          b: 90
         },
 
         legend: {
           orientation: "h",
           y: -0.25
+        }
+      }, {
+        responsive: true
+      });
+
+      // Draw Log Error Fraction Plot
+      Plotly.react("errorPlot", [
+        {
+          x: errorTime,
+          y: errorFraction,
+          type: "scatter",
+          mode: "lines",
+          name: "Error Fraction E(t)",
+          line: {
+            color: "red",
+            width: 3
+          }
+        }
+      ], {
+        title: "First-Order Step Error Fraction (Log Scale)",
+
+        xaxis: {
+          title: "Time (s)"
+        },
+
+        yaxis: {
+          title: "Normalized Error Fraction E(t)",
+          type: "log",
+          range: [-2.5, 0.1]
+        },
+
+        margin: {
+          t: 60,
+          b: 70
         }
       }, {
         responsive: true
@@ -199,7 +303,7 @@
     gainSlider.addEventListener("input", updatePlot);
     inputType.addEventListener("change", updatePlot);
 
-    // Initial plot
+    // Initial rendering
     updatePlot();
   </script>
 </body>
