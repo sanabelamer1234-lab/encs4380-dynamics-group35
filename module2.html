@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Module 2: First-Order Frequency Response</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background-color: whitesmoke; color: black; }
+        h1, h2, h3 { color: darkslategray; }
+        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .slider-group { margin-bottom: 15px; }
+        label { font-weight: bold; display: inline-block; width: 200px; }
+        input[type=range] { width: 300px; vertical-align: middle; }
+        .value-display { font-weight: bold; color: steelblue; margin-left: 10px; }
+        .plot { width: 100%; height: 350px; }
+        .metrics { display: flex; flex-wrap: wrap; gap: 20px; margin-top: 15px; background: aliceblue; padding: 15px; border-radius: 5px; border-left: 5px solid dodgerblue;}
+        .metric-box { font-size: 16px; }
+        .pass { color: green; font-weight: bold; }
+        .fail { color: red; font-weight: bold; }
+        .btn { padding: 8px 15px; background-color: dodgerblue; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .btn:hover { background-color: royalblue; }
+    </style>
+</head>
+<body>
+
+    <h1>Dynamic Characteristics Toolkit</h1>
+    <h2>Module 2: First-Order Frequency Response</h2>
+
+    <div class="container">
+        <div class="slider-group">
+            <label>Time Constant (τ): </label>
+            <input type="range" id="tauSlider" min="0.01" max="3" step="0.01" value="0.2">
+            <span class="value-display" id="tauValue">0.20 s</span>
+        </div>
+        <div class="slider-group">
+            <label>Input Frequency (ω): </label>
+            <input type="range" id="omegaSlider" min="0.1" max="30" step="0.1" value="2">
+            <span class="value-display" id="omegaValue">2.0 rad/s</span>
+        </div>
+    </div>
+
+    <div class="container" style="background-color: lightyellow; border-left: 5px solid gold;">
+        <h3>Predict, then Check</h3>
+        <p>What happens to the amplitude ratio (M) if we increase the frequency (ω)?</p>
+        <select id="prediction">
+            <option value="">Select prediction...</option>
+            <option value="increase">It increases</option>
+            <option value="decrease">It decreases</option>
+            <option value="same">It stays the same</option>
+        </select>
+        <button class="btn" onclick="checkPrediction()">Check Prediction</button>
+        <span id="predictionResult" style="margin-left: 10px; font-weight: bold;"></span>
+    </div>
+
+    <div class="container">
+        <h3>Input and Output Sines (Time Domain)</h3>
+        <div id="sinePlot" class="plot"></div>
+        
+        <div class="metrics">
+            <div class="metric-box">Amplitude Ratio (M): <span id="valM" style="color: green;">-</span></div>
+            <div class="metric-box">Phase Lag (φ): <span id="valPhi" style="color: brown;">-</span></div>
+            <div class="metric-box">Dynamic Error (δ = M - 1): <span id="valDelta">-</span></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h3>Bode Plot (Magnitude)</h3>
+        <p>Cutoff frequency is where ω = 1/τ (dashed line).</p>
+        <div id="bodePlot" class="plot"></div>
+    </div>
+
+    <div class="container">
+        <h3>Validation Checks</h3>
+        
+        <div style="margin-bottom: 20px;">
+            <h4>Test 2: τ = 0.2s, ω = 2 rad/s</h4>
+            <p>Expected: Amplitude Ratio ≈ 0.93, Phase Lag ≈ 21.8°</p>
+            <p style="font-size: 14px; color: dimgray;">(Move the sliders to τ = 0.2 and ω = 2 to see the PASS status)</p>
+            <div class="metrics">
+                <div>M is: <span id="v2M">-</span> <span id="v2Ms">-</span></div>
+                <div>φ is: <span id="v2Phi">-</span> <span id="v2Phis">-</span></div>
+            </div>
+        </div>
+
+        <div>
+            <h4>Test 3: Max Dynamic Error 5% at 100 Hz</h4>
+            <p>Expected: τ_max ≈ 0.52 ms. Phase lag at 50 Hz ≈ 9.3°.</p>
+            <div class="metrics">
+                <div>τ_max is: <span id="v3Tau">-</span> <span id="v3Taus">-</span></div>
+                <div>φ at 50Hz is: <span id="v3Phi">-</span> <span id="v3Phis">-</span></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function update() {
+            let tau = parseFloat(document.getElementById('tauSlider').value);
+            let omega = parseFloat(document.getElementById('omegaSlider').value);
+
+            document.getElementById('tauValue').innerText = tau.toFixed(2) + " s";
+            document.getElementById('omegaValue').innerText = omega.toFixed(1) + " rad/s";
+
+            let omegaTau = omega * tau;
+            let M = 1 / Math.sqrt(1 + Math.pow(omegaTau, 2));
+            let phi_rad = -Math.atan(omegaTau);
+            let phi_deg = phi_rad * (180 / Math.PI);
+            let delta = M - 1;
+
+            document.getElementById('valM').innerText = M.toFixed(4);
+            document.getElementById('valPhi').innerText = Math.abs(phi_deg).toFixed(2) + "°";
+            document.getElementById('valDelta').innerText = delta.toFixed(4);
+
+            let t = [], input_sine = [], output_sine = [];
+            let steps = 200;
+            let period = 2 * Math.PI / omega;
+            let t_max = 3 * period; 
+
+            for (let i = 0; i <= steps; i++) {
+                let time = (i / steps) * t_max;
+                t.push(time);
+                input_sine.push(Math.sin(omega * time));
+                output_sine.push(M * Math.sin(omega * time + phi_rad));
+            }
+
+            let traceInput = { x: t, y: input_sine, name: 'Input (x)', type: 'scatter', line: {color: 'blue'} };
+            let traceOutput = { x: t, y: output_sine, name: 'Output (y)', type: 'scatter', line: {color: 'red'} };
+            
+            Plotly.newPlot('sinePlot', [traceInput, traceOutput], { margin: {t: 30, l: 40, r: 20, b: 40} });
+
+            let w_array = [], mag_array = [];
+            for (let w = 0.1; w <= 100; w += 0.5) {
+                w_array.push(w);
+                let m_val = 1 / Math.sqrt(1 + Math.pow(w * tau, 2));
+                mag_array.push(m_val);
+            }
+
+            let traceBode = { x: w_array, y: mag_array, name: 'Magnitude', type: 'scatter', line: {color: 'green'} };
+            let cutoff = 1 / tau;
+            let shapes = [{ type: 'line', x0: cutoff, y0: 0, x1: cutoff, y1: 1.1, line: {color: 'black', dash: 'dash', width: 2} }];
+
+            Plotly.newPlot('bodePlot', [traceBode], {
+                shapes: shapes,
+                xaxis: { title: 'Frequency (ω) [rad/s]', type: 'log' },
+                yaxis: { title: 'Amplitude Ratio (M)', range: [0, 1.1] },
+                margin: {t: 30, l: 40, r: 20, b: 40}
+            });
+
+            if (tau === 0.2 && omega === 2) {
+                document.getElementById('v2M').innerText = M.toFixed(3);
+                document.getElementById('v2Phi').innerText = Math.abs(phi_deg).toFixed(1) + "°";
+
+                let passM = Math.abs(M - 0.93) < 0.01 ? "PASS" : "FAIL";
+                let passPhi = Math.abs(Math.abs(phi_deg) - 21.8) < 0.5 ? "PASS" : "FAIL";
+
+                document.getElementById('v2Ms').innerText = passM;
+                document.getElementById('v2Ms').className = passM === "PASS" ? "pass" : "fail";
+                document.getElementById('v2Phis').innerText = passPhi;
+                document.getElementById('v2Phis').className = passPhi === "PASS" ? "pass" : "fail";
+            } else {
+                document.getElementById('v2M').innerText = "-";
+                document.getElementById('v2Phi').innerText = "-";
+                document.getElementById('v2Ms').innerText = "-";
+                document.getElementById('v2Ms').className = "";
+                document.getElementById('v2Phis').innerText = "-";
+                document.getElementById('v2Phis').className = "";
+            }
+        }
+
+        function checkPrediction() {
+            let val = document.getElementById('prediction').value;
+            let res = document.getElementById('predictionResult');
+            if(val === 'decrease') {
+                res.innerText = "Correct! M decreases as ω increases.";
+                res.className = "pass";
+            } else if (val !== '') {
+                res.innerText = "Incorrect. Try moving the ω slider to see.";
+                res.className = "fail";
+            }
+        }
+
+        function runTest3Auto() {
+            let f100 = 100;
+            let w100 = 2 * Math.PI * f100;
+            
+            let targetWT = Math.sqrt(1 / Math.pow(0.95, 2) - 1);
+            let tau_max = targetWT / w100;
+            
+            let w50 = 2 * Math.PI * 50;
+            let phi50_rad = -Math.atan(w50 * tau_max);
+            let phi50_deg = Math.abs(phi50_rad * (180 / Math.PI));
+
+            document.getElementById('v3Tau').innerText = (tau_max * 1000).toFixed(2) + " ms";
+            document.getElementById('v3Phi').innerText = phi50_deg.toFixed(1) + "°";
+
+            let passTau = Math.abs(tau_max * 1000 - 0.52) < 0.05 ? "PASS" : "FAIL";
+            let passPhi = Math.abs(phi50_deg - 9.3) < 0.5 ? "PASS" : "FAIL";
+
+            document.getElementById('v3Taus').innerText = passTau;
+            document.getElementById('v3Taus').className = passTau === "PASS" ? "pass" : "fail";
+            document.getElementById('v3Phis').innerText = passPhi;
+            document.getElementById('v3Phis').className = passPhi === "PASS" ? "pass" : "fail";
+        }
+
+        document.getElementById('tauSlider').addEventListener('input', update);
+        document.getElementById('omegaSlider').addEventListener('input', update);
+        
+        update();
+        runTest3Auto();
+    </script>
+</body>
+</html>
