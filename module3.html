@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module 3 – Second-Order Response</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+  :root { --bg:#f6f7fb; --card:#fff; --text:#1d2433; --muted:#5b6475; --accent:#2457c5; --pass:#1a7f37; --fail:#c62828; --border:#dde2ec; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:16px; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--bg); color:var(--text); line-height:1.5; }
+  main { max-width: 1100px; margin: 0 auto; }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; }
+  h2 { font-size: 1.15rem; margin: 0 0 10px; color: var(--accent); }
+  .muted { color: var(--muted); }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; margin:16px 0; }
+  .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
+  @media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
+  .slider { display:grid; grid-template-columns: 110px 1fr 70px; align-items:center; gap:8px; margin:6px 0; }
+  .slider input { width:100%; }
+  .slider output { font-variant-numeric: tabular-nums; text-align:right; font-weight:600; }
+  .plot { width:100%; height:340px; }
+  table { border-collapse: collapse; width:100%; font-size:0.95rem; }
+  th, td { border-bottom:1px solid var(--border); padding:6px 8px; text-align:left; }
+  th { background:#eef2fa; }
+  .pass { color:var(--pass); font-weight:700; }
+  .fail { color:var(--fail); font-weight:700; }
+  button { background:var(--accent); color:#fff; border:0; border-radius:8px; padding:7px 12px; font-size:0.9rem; cursor:pointer; margin:2px; }
+  button.secondary { background:#e8edf8; color:var(--accent); }
+  .case { display:inline-block; padding:3px 10px; border-radius:999px; background:#eef2fa; font-weight:600; }
+  .matrix { font-family: ui-monospace, Menlo, Consolas, monospace; background:#f3f5fa; padding:10px; border-radius:8px; white-space:pre; overflow-x:auto; }
+  .q { border-left:3px solid var(--accent); padding:6px 10px; margin:10px 0; }
+  .q label { display:block; margin:2px 0; }
+  .answer { margin-top:6px; }
+  .table-wrap { overflow-x:auto; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Module 3: Second-Order Response</h1>
+  <p class="muted">
+    Model: G(s) = K·ωn² / (s² + 2ζωn·s + ωn²). For a mass-spring-damper m·ẍ + b·ẋ + k·x = F:
+    ωn = √(k/m) and ζ = b / (2√(k·m)). Moving ζ/ωn updates b and k (m kept), and moving m, b, k updates ζ and ωn.
+  </p>
+
+  <!-- ===== Parameters ===== -->
+  <section class="card">
+    <h2>Parameters</h2>
+    <div class="grid2">
+      <div>
+        <div class="slider"><label for="zeta">ζ (damping)</label><input id="zeta" type="range" min="0.05" max="2.5" step="0.01"><output id="zetaV"></output></div>
+        <div class="slider"><label for="wn">ωn (rad/s)</label><input id="wn" type="range" min="0.5" max="10" step="0.1"><output id="wnV"></output></div>
+        <div>
+          <button class="secondary" data-zeta="0.3">Underdamped ζ=0.3</button>
+          <button class="secondary" data-zeta="1">Critical ζ=1</button>
+          <button class="secondary" data-zeta="2">Overdamped ζ=2</button>
+        </div>
+      </div>
+      <div>
+        <div class="slider"><label for="m">m (kg)</label><input id="m" type="range" min="0.2" max="5" step="0.1"><output id="mV"></output></div>
+        <div class="slider"><label for="b">b (N·s/m)</label><input id="b" type="range" min="0.1" max="50" step="0.1"><output id="bV"></output></div>
+        <div class="slider"><label for="k">k (N/m)</label><input id="k" type="range" min="0.5" max="100" step="0.1"><output id="kV"></output></div>
+      </div>
+    </div>
+    <p>Current case: <span id="caseLabel" class="case"></span></p>
+  </section>
+
+  <!-- ===== Predict, then check ===== -->
+  <section class="card">
+    <h2>Predict, then check</h2>
+    <p class="muted">Answer first, then move the sliders to see if you were right.</p>
+    <div id="quiz"></div>
+  </section>
+
+  <!-- ===== Step response ===== -->
+  <section class="card">
+    <h2>Step response (normalised y / KA)</h2>
+    <p class="muted">Bold line = current sensor. Faint dashed lines = the three damping cases at the same ωn. Grey band = ±2% settling band.</p>
+    <div id="stepPlot" class="plot"></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Metric</th><th>Read off the curve</th><th>Formula (underdamped)</th></tr></thead>
+        <tbody>
+          <tr><td>Rise time t<sub>r</sub> (10% → 90%)</td><td id="trM"></td><td id="trF"></td></tr>
+          <tr><td>Peak time t<sub>p</sub></td><td id="tpM"></td><td id="tpF"></td></tr>
+          <tr><td>Overshoot M<sub>p</sub></td><td id="osM"></td><td id="osF"></td></tr>
+          <tr><td>Settling time t<sub>s</sub> (2%)</td><td id="tsM"></td><td id="tsF"></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===== s-plane ===== -->
+  <section class="card">
+    <h2>Poles in the s-plane</h2>
+    <div class="grid2">
+      <div id="polePlot" class="plot"></div>
+      <div>
+        <p>Poles from ζ, ωn: s = −ζωn ± ωn√(ζ² − 1)</p>
+        <p id="polesText" class="matrix"></p>
+        <p>Eigenvalues of A (state-space panel below):</p>
+        <p id="eigText2" class="matrix"></p>
+        <p class="muted">× = poles, ○ = eigenvalues. They sit on top of each other because they are the same numbers.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== State-space ===== -->
+  <section class="card">
+    <h2>State-space panel (x₁ = x, x₂ = ẋ)</h2>
+    <p class="muted">ẋ = A·x + B·F(t), y = [1 0]·x. Step force F = 1 N, so x settles at 1/k.</p>
+    <div class="grid2">
+      <div>
+        <p>A =</p><div id="Amat" class="matrix"></div>
+        <p>B =</p><div id="Bmat" class="matrix"></div>
+        <p>Eigenvalues of A:</p><div id="eigText" class="matrix"></div>
+      </div>
+      <div id="phasePlot" class="plot"></div>
+    </div>
+    <div id="rk4Plot" class="plot"></div>
+    <p class="muted">The RK4 simulation of the state-space model (dots) lands on the closed-form curve x(t) = y(t)/k (line).</p>
+  </section>
+
+  <!-- ===== Validation ===== -->
+  <section class="card">
+    <h2>Validation checks (Module 3)</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Test</th><th>Expected</th><th>Our value</th><th>Result</th><th></th></tr></thead>
+        <tbody id="valBody"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<script>
+// ---------- State: m, b, k are the single source of truth ----------
+const S = { m: 1, b: 2, k: 4 };          // starts at ζ = 0.5, ωn = 2
+const zetaOf = () => S.b / (2 * Math.sqrt(S.k * S.m));
+const wnOf   = () => Math.sqrt(S.k / S.m);
+
+// ---------- Maths ----------
+// Closed-form unit-step response of ωn²/(s² + 2ζωn s + ωn²)
+function stepY(t, zeta, wn) {
+  if (Math.abs(zeta - 1) < 1e-9) {                       // critically damped
+    return 1 - Math.exp(-wn * t) * (1 + wn * t);
+  }
+  if (zeta < 1) {                                        // underdamped
+    const r = Math.sqrt(1 - zeta * zeta), wd = wn * r, phi = Math.acos(zeta);
+    return 1 - Math.exp(-zeta * wn * t) / r * Math.sin(wd * t + phi);
+  }
+  const r = Math.sqrt(zeta * zeta - 1);                  // overdamped: two real poles
+  const s1 = -wn * (zeta - r), s2 = -wn * (zeta + r);
+  return 1 + (s2 * Math.exp(s1 * t) - s1 * Math.exp(s2 * t)) / (s1 - s2);
+}
+
+function poles(zeta, wn) {
+  if (zeta < 1) {
+    const wd = wn * Math.sqrt(1 - zeta * zeta);
+    return [{ re: -zeta * wn, im: wd }, { re: -zeta * wn, im: -wd }];
+  }
+  const r = wn * Math.sqrt(zeta * zeta - 1);
+  return [{ re: -zeta * wn + r, im: 0 }, { re: -zeta * wn - r, im: 0 }];
+}
+
+// Eigenvalues of a 2×2 matrix: λ² − tr·λ + det = 0
+function eig2(A) {
+  const tr = A[0][0] + A[1][1];
+  const det = A[0][0] * A[1][1] - A[0][1] * A[1][0];
+  const disc = tr * tr / 4 - det;
+  if (disc >= 0) { const r = Math.sqrt(disc); return [{ re: tr / 2 + r, im: 0 }, { re: tr / 2 - r, im: 0 }]; }
+  const r = Math.sqrt(-disc);
+  return [{ re: tr / 2, im: r }, { re: tr / 2, im: -r }];
+}
+
+// Time window long enough for the slowest pole to settle
+function timeSpan(zeta, wn) {
+  const sigma = Math.min(...poles(zeta, wn).map(p => Math.abs(p.re)));
+  return Math.min(7 / sigma, 500);
+}
+
+function simulate(zeta, wn, N = 2000) {
+  const T = timeSpan(zeta, wn), t = [], y = [];
+  for (let i = 0; i <= N; i++) { t.push(i * T / N); y.push(stepY(t[i], zeta, wn)); }
+  return { t, y };
+}
+
+// Read rise, peak, overshoot and settling directly off the sampled curve
+function metrics(t, y) {
+  const cross = level => {
+    for (let i = 1; i < y.length; i++) if (y[i] >= level) {
+      const f = (level - y[i - 1]) / (y[i] - y[i - 1]);
+      return t[i - 1] + f * (t[i] - t[i - 1]);           // linear interpolation
+    }
+    return NaN;
+  };
+  const t10 = cross(0.1), t90 = cross(0.9);
+  let iMax = 0;
+  for (let i = 1; i < y.length; i++) if (y[i] > y[iMax]) iMax = i;
+  const os = Math.max(0, (y[iMax] - 1) * 100);
+  const hasPeak = os > 0.01;
+  let ts = 0;
+  for (let i = y.length - 1; i >= 0; i--) if (Math.abs(y[i] - 1) > 0.02) { ts = t[Math.min(i + 1, y.length - 1)]; break; }
+  return { t10, t90, tr: t90 - t10, tp: hasPeak ? t[iMax] : NaN, yp: y[iMax], os, ts, hasPeak };
+}
+
+// Fourth-order Runge–Kutta for ẋ = A x + B F
+function rk4(A, B, F, T, N) {
+  const h = T / N, f = x => [A[0][0] * x[0] + A[0][1] * x[1] + B[0] * F,
+                             A[1][0] * x[0] + A[1][1] * x[1] + B[1] * F];
+  let x = [0, 0];
+  const out = { t: [0], x1: [0], x2: [0] };
+  for (let i = 1; i <= N; i++) {
+    const k1 = f(x);
+    const k2 = f([x[0] + h / 2 * k1[0], x[1] + h / 2 * k1[1]]);
+    const k3 = f([x[0] + h / 2 * k2[0], x[1] + h / 2 * k2[1]]);
+    const k4 = f([x[0] + h * k3[0], x[1] + h * k3[1]]);
+    x = [x[0] + h / 6 * (k1[0] + 2 * k2[0] + 2 * k3[0] + k4[0]),
+         x[1] + h / 6 * (k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1])];
+    out.t.push(i * h); out.x1.push(x[0]); out.x2.push(x[1]);
+  }
+  return out;
+}
+
+const stateMatrices = (m, b, k) => ({ A: [[0, 1], [-k / m, -b / m]], B: [0, 1 / m] });
+
+// ---------- Formatting ----------
+const f3 = v => Number.isFinite(v) ? v.toFixed(3) : '—';
+const fC = p => Math.abs(p.im) < 1e-12 ? p.re.toFixed(3) : `${p.re.toFixed(3)} ${p.im >= 0 ? '+' : '−'} j${Math.abs(p.im).toFixed(3)}`;
+const caseName = z => Math.abs(z - 1) < 1e-9 ? 'Critically damped (ζ = 1)' : z < 1 ? 'Underdamped (0 < ζ < 1)' : 'Overdamped (ζ > 1)';
+const $ = id => document.getElementById(id);
+
+const plotCfg = { responsive: true, displayModeBar: false };
+const baseLayout = (xt, yt) => ({ margin: { l: 55, r: 15, t: 20, b: 45 }, xaxis: { title: xt, zeroline: true },
+  yaxis: { title: yt, zeroline: true }, legend: { orientation: 'h', y: -0.25 }, paper_bgcolor: 'rgba(0,0,0,0)' });
+
+// ---------- Drawing ----------
+function update() {
+  const zeta = zetaOf(), wn = wnOf();
+
+  // sliders and labels
+  $('zeta').value = zeta; $('wn').value = wn; $('m').value = S.m; $('b').value = S.b; $('k').value = S.k;
+  $('zetaV').textContent = zeta.toFixed(2); $('wnV').textContent = wn.toFixed(2);
+  $('mV').textContent = S.m.toFixed(1); $('bV').textContent = S.b.toFixed(2); $('kV').textContent = S.k.toFixed(2);
+  $('caseLabel').textContent = caseName(zeta);
+
+  // step response + metrics
+  const { t, y } = simulate(zeta, wn);
+  const M = metrics(t, y);
+  const T = t[t.length - 1];
+  const refs = [0.3, 1, 2].map(z => ({ x: t, y: t.map(tt => stepY(tt, z, wn)), name: `ζ=${z}`,
+    mode: 'lines', line: { dash: 'dash', width: 1 }, opacity: 0.5 }));
+  const markers = { x: [M.t10, M.t90, M.ts], y: [0.1, 0.9, stepY(M.ts, zeta, wn)], mode: 'markers+text',
+    text: ['10%', '90%', 't_s'], textposition: 'top left', name: 'markers', marker: { size: 9, color: '#e07b00' } };
+  const traces = [...refs, { x: t, y, name: 'current', mode: 'lines', line: { width: 3, color: '#2457c5' } }, markers];
+  if (M.hasPeak) traces.push({ x: [M.tp], y: [M.yp], mode: 'markers+text', text: ['peak'], textposition: 'top right',
+    name: 'peak', marker: { size: 11, color: '#c62828' } });
+  const lay = baseLayout('t (s)', 'y / KA');
+  lay.shapes = [
+    { type: 'rect', x0: 0, x1: T, y0: 0.98, y1: 1.02, fillcolor: 'rgba(120,120,120,0.15)', line: { width: 0 } },
+    { type: 'line', x0: 0, x1: T, y0: 1, y1: 1, line: { dash: 'dot', color: '#555' } }];
+  Plotly.react('stepPlot', traces, lay, plotCfg);
+
+  $('trM').textContent = f3(M.tr) + ' s';
+  $('tpM').textContent = M.hasPeak ? f3(M.tp) + ' s' : 'no peak';
+  $('osM').textContent = M.os.toFixed(2) + ' %';
+  $('tsM').textContent = f3(M.ts) + ' s';
+  if (zeta < 1) {
+    const wd = wn * Math.sqrt(1 - zeta * zeta);
+    $('trF').textContent = '≈ ' + f3((1 - 0.4167 * zeta + 2.917 * zeta * zeta) / wn) + ' s (approx.)';
+    $('tpF').textContent = 'π/ωd = ' + f3(Math.PI / wd) + ' s';
+    $('osF').textContent = 'e^(−πζ/√(1−ζ²)) = ' + (100 * Math.exp(-Math.PI * zeta / Math.sqrt(1 - zeta * zeta))).toFixed(2) + ' %';
+    $('tsF').textContent = '4/(ζωn) ≈ ' + f3(4 / (zeta * wn)) + ' s';
+  } else {
+    $('trF').textContent = '—'; $('tpF').textContent = 'no peak (ζ ≥ 1)';
+    $('osF').textContent = '0 %'; $('tsF').textContent = '—';
+  }
+
+  // poles and eigenvalues
+  const P = poles(zeta, wn);
+  const { A, B } = stateMatrices(S.m, S.b, S.k);
+  const E = eig2(A);
+  $('polesText').textContent = P.map(fC).join('\n');
+  $('eigText').textContent = E.map(fC).join('\n');
+  $('eigText2').textContent = E.map(fC).join('\n');
+  const minRe = Math.min(...P.map(p => p.re)), maxIm = Math.max(1, ...P.map(p => Math.abs(p.im)));
+  const pl = baseLayout('Re(s)', 'Im(s)');
+  pl.xaxis.range = [minRe * 1.25 - 0.5, Math.max(0.5, -minRe * 0.25)];
+  pl.yaxis.range = [-maxIm * 1.3, maxIm * 1.3];
+  Plotly.react('polePlot', [
+    { x: P.map(p => p.re), y: P.map(p => p.im), mode: 'markers', name: 'poles', marker: { symbol: 'x', size: 14, color: '#c62828' } },
+    { x: E.map(p => p.re), y: E.map(p => p.im), mode: 'markers', name: 'eigenvalues of A', marker: { symbol: 'circle-open', size: 22, color: '#2457c5', line: { width: 2 } } }
+  ], pl, plotCfg);
+
+  // matrices
+  $('Amat').textContent = `[ ${(0).toFixed(3).padStart(8)}  ${(1).toFixed(3).padStart(8)} ]\n[ ${A[1][0].toFixed(3).padStart(8)}  ${A[1][1].toFixed(3).padStart(8)} ]`;
+  $('Bmat').textContent = `[ ${(0).toFixed(3).padStart(8)} ]\n[ ${B[1].toFixed(3).padStart(8)} ]`;
+
+  // phase plane + RK4 vs closed form
+  const sim = rk4(A, B, 1, T, 1500);
+  const pp = baseLayout('x₁ = x (m)', 'x₂ = ẋ (m/s)');
+  Plotly.react('phasePlot', [
+    { x: sim.x1, y: sim.x2, mode: 'lines', name: 'path (x₁, x₂)', line: { color: '#2457c5' } },
+    { x: [0], y: [0], mode: 'markers', name: 'start', marker: { size: 10, color: '#1a7f37' } },
+    { x: [1 / S.k], y: [0], mode: 'markers', name: 'equilibrium 1/k', marker: { size: 10, symbol: 'star', color: '#c62828' } }
+  ], pp, plotCfg);
+  const idx = sim.t.map((_, i) => i).filter(i => i % 30 === 0);
+  Plotly.react('rk4Plot', [
+    { x: t, y: y.map(v => v / S.k), mode: 'lines', name: 'closed form y(t)/k', line: { width: 2 } },
+    { x: idx.map(i => sim.t[i]), y: idx.map(i => sim.x1[i]), mode: 'markers', name: 'RK4 x₁(t)', marker: { size: 6 } }
+  ], baseLayout('t (s)', 'x (m)'), plotCfg);
+}
+
+// ---------- Validation tests 4, 5, 6 ----------
+function runValidation() {
+  const rows = [];
+  { const s = simulate(0.5, 2), M = metrics(s.t, s.y);
+    rows.push(['4', 'Second order, ζ = 0.5: overshoot', '16.3 %', M.os.toFixed(2) + ' %', Math.abs(M.os - 16.3) < 0.1, () => setZW(0.5, 2)]); }
+  { const s = simulate(1, 2), M = metrics(s.t, s.y);
+    rows.push(['5', 'Second order, ζ = 1: no overshoot', '0 %', M.os.toFixed(4) + ' %', M.os < 0.01, () => setZW(1, 2)]); }
+  { const { A } = stateMatrices(1, 2, 4), E = eig2(A), P = poles(2 / (2 * Math.sqrt(4)), Math.sqrt(4));
+    const ok = Math.abs(E[0].re + 1) < 1e-3 && Math.abs(Math.abs(E[0].im) - 1.732) < 1e-3 &&
+               E.every((e, i) => Math.abs(e.re - P[i].re) < 1e-9 && Math.abs(e.im - P[i].im) < 1e-9);
+    rows.push(['6', 'State space m=1, b=2, k=4: eig(A) = poles', '−1 ± j1.732', `eig: ${fC(E[0])}, ${fC(E[1])}<br>poles: ${fC(P[0])}, ${fC(P[1])}`, ok,
+      () => { S.m = 1; S.b = 2; S.k = 4; update(); }]); }
+  const body = $('valBody'); body.innerHTML = '';
+  rows.forEach(([n, name, exp, got, ok, load]) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${n}</td><td>${name}</td><td>${exp}</td><td>${got}</td><td class="${ok ? 'pass' : 'fail'}">${ok ? 'PASS' : 'FAIL'}</td><td></td>`;
+    const btn = document.createElement('button'); btn.textContent = 'Show'; btn.className = 'secondary'; btn.onclick = load;
+    tr.lastChild.appendChild(btn); body.appendChild(tr);
+  });
+}
+
+// ---------- Predict, then check ----------
+const QUIZ = [
+  { q: 'Keep ωn fixed and raise ζ from 0.2 to 0.7. What happens to the overshoot?',
+    opts: ['It grows', 'It shrinks', 'It stays the same'], a: 1,
+    why: 'Overshoot depends only on ζ: Mp = e^(−πζ/√(1−ζ²)). More damping, less overshoot.' },
+  { q: 'Keep ζ = 0.5 and double ωn. What happens?',
+    opts: ['Overshoot doubles', 'Same overshoot, but everything happens twice as fast', 'Overshoot halves'], a: 1,
+    why: 'ωn only scales time: tp = π/ωd and ts ≈ 4/(ζωn) halve, while Mp is unchanged.' },
+  { q: 'Which damping reaches the final value fastest without overshooting?',
+    opts: ['ζ = 0.5', 'ζ = 1', 'ζ = 2'], a: 1,
+    why: 'ζ = 1 (critical) is the fastest response with no overshoot. ζ = 2 has one very slow pole.' },
+  { q: 'For ζ = 0.3, what shape does the (x₁, x₂) path take in the phase plane?',
+    opts: ['A spiral into the equilibrium', 'A straight line', 'A curve with no spiral'], a: 0,
+    why: 'Complex poles mean oscillation, so position and velocity keep swapping: a spiral. ζ ≥ 1 gives no spiral.' }
+];
+function buildQuiz() {
+  $('quiz').innerHTML = QUIZ.map((item, i) => `
+    <div class="q"><b>${i + 1}. ${item.q}</b>
+      ${item.opts.map((o, j) => `<label><input type="radio" name="q${i}" value="${j}"> ${o}</label>`).join('')}
+      <button data-q="${i}">Check</button><div class="answer" id="ans${i}"></div></div>`).join('');
+  document.querySelectorAll('#quiz button').forEach(btn => btn.onclick = () => {
+    const i = +btn.dataset.q, sel = document.querySelector(`input[name=q${i}]:checked`);
+    const out = $('ans' + i);
+    if (!sel) { out.innerHTML = '<span class="fail">Pick an answer first.</span>'; return; }
+    const ok = +sel.value === QUIZ[i].a;
+    out.innerHTML = `<span class="${ok ? 'pass' : 'fail'}">${ok ? 'Correct.' : 'Not quite.'}</span> ${QUIZ[i].why}`;
+  });
+}
+
+// ---------- Events ----------
+function setZW(zeta, wn) { S.k = S.m * wn * wn; S.b = 2 * zeta * wn * S.m; update(); }
+$('zeta').addEventListener('input', e => setZW(+e.target.value, wnOf()));
+$('wn').addEventListener('input', e => setZW(zetaOf(), +e.target.value));
+['m', 'b', 'k'].forEach(id => $(id).addEventListener('input', e => { S[id] = +e.target.value; update(); }));
+document.querySelectorAll('button[data-zeta]').forEach(btn => btn.onclick = () => setZW(+btn.dataset.zeta, wnOf()));
+
+buildQuiz();
+update();
+runValidation();
+</script>
+</body>
+</html>
