@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module 4 – Guess the Sensor</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+  :root { --bg:#f6f7fb; --card:#fff; --text:#1d2433; --muted:#5b6475; --accent:#2457c5; --pass:#1a7f37; --fail:#c62828; --border:#dde2ec; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:16px; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--bg); color:var(--text); line-height:1.5; }
+  main { max-width: 1100px; margin: 0 auto; }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; }
+  h2 { font-size: 1.15rem; margin: 0 0 10px; color: var(--accent); }
+  nav { display:flex; flex-wrap:wrap; gap:4px 14px; margin:0 0 8px; font-size:0.95rem; }
+  nav a { color:var(--accent); }
+  nav strong { color:var(--text); }
+  .muted { color: var(--muted); }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; margin:16px 0; }
+  .stats { display:flex; flex-wrap:wrap; align-items:center; gap:8px 28px; }
+  .stat b { font-size:1.3rem; font-variant-numeric: tabular-nums; }
+  .stat span { color:var(--muted); font-size:0.9rem; margin-left:4px; }
+  .stats button { margin-left:auto; }
+  .plot { width:100%; height:380px; }
+  .toolbar { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  table { border-collapse: collapse; width:100%; font-size:0.95rem; }
+  th, td { border-bottom:1px solid var(--border); padding:6px 8px; text-align:left; }
+  th { background:#eef2fa; }
+  .table-wrap { overflow-x:auto; }
+  .pass { color:var(--pass); font-weight:700; }
+  .fail { color:var(--fail); font-weight:700; }
+  button { background:var(--accent); color:#fff; border:0; border-radius:8px; padding:9px 14px; font-size:0.95rem; cursor:pointer; }
+  button.secondary { background:#e8edf8; color:var(--accent); }
+  button:disabled { opacity:0.5; cursor:default; }
+  .q { border-left:3px solid var(--accent); padding:6px 10px; margin:10px 0; }
+  .q label { display:block; margin:6px 0; }
+  .answer { margin-top:6px; }
+  .hints { margin:8px 0 0; padding-left:20px; }
+  .fields { display:flex; flex-wrap:wrap; gap:12px 20px; margin:10px 0; }
+  .fields label { display:block; font-weight:600; }
+  .fields input { display:block; width:150px; padding:8px; font-size:16px; border:1px solid var(--border); border-radius:8px; margin-top:4px; }
+  .slider { display:grid; grid-template-columns: 110px 1fr 70px; align-items:center; gap:8px; margin:6px 0; }
+  .slider input { width:100%; }
+  .slider output { font-variant-numeric: tabular-nums; text-align:right; font-weight:600; }
+  .verdict { font-size:1.1rem; font-weight:700; margin:12px 0 4px; }
+  @media (max-width: 600px) { .plot { height:320px; } }
+</style>
+</head>
+<body>
+<main>
+  <nav aria-label="Modules">
+    <a href="index.html">Module 1</a>
+    <a href="module2.html">Module 2</a>
+    <a href="module3.html">Module 3</a>
+    <strong>Module 4</strong>
+  </nav>
+  <h1>Module 4: Guess the Sensor</h1>
+  <p class="muted">
+    A hidden sensor produced the noisy record below. Read the curve and work backwards to its parameters,
+    the way an engineer does with a real sensor. Within 10% earns full marks.
+  </p>
+
+  <!-- ===== Running score ===== -->
+  <section class="card stats" aria-label="Session score">
+    <div class="stat"><b id="statRounds">0</b><span>rounds</span></div>
+    <div class="stat"><b id="statPoints">0</b><span>points</span></div>
+    <div class="stat"><b id="statAverage">—</b><span>average</span></div>
+    <button class="secondary" id="resetScore">Reset score</button>
+  </section>
+
+  <!-- ===== The mystery curve ===== -->
+  <section class="card" id="plotCard">
+    <h2>Mystery response</h2>
+    <p id="stimulus"></p>
+    <div id="mainPlot" class="plot"></div>
+    <p class="muted" id="plotHelp"></p>
+    <p id="reading" aria-live="polite"></p>
+    <div class="toolbar">
+      <button class="new-sensor">New sensor</button>
+      <button class="secondary" id="hintBtn">Hint</button>
+    </div>
+    <ul class="hints" id="hintList" aria-live="polite"></ul>
+  </section>
+
+  <!-- ===== Step 1: predict ===== -->
+  <section class="card" id="predictCard">
+    <h2>Step 1: Predict, then check</h2>
+    <div class="q">
+      <b id="predictQuestion"></b>
+      <div id="predictOptions"></div>
+      <button id="predictBtn">Check</button>
+      <div class="answer" id="predictAnswer" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- ===== Step 2: estimate ===== -->
+  <section class="card" id="estimateCard" hidden>
+    <h2>Step 2: Your estimate</h2>
+    <p class="muted" id="estimateMethod"></p>
+    <div class="toolbar" id="logTools">
+      <button type="button" class="secondary" id="logBtn">Show log-error plot</button>
+    </div>
+    <div id="logPanel" hidden>
+      <p class="muted" id="logCaption"></p>
+      <div id="logPlot" class="plot"></div>
+    </div>
+    <form id="guessForm" novalidate>
+      <div class="fields" id="guessFields"></div>
+      <button type="submit">Submit guess</button>
+      <div class="answer fail" id="guessError" aria-live="polite"></div>
+    </form>
+  </section>
+
+  <!-- ===== Step 3: reveal ===== -->
+  <section class="card" id="revealCard" hidden>
+    <h2>Step 3: The reveal</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Parameter</th><th>Your guess</th><th>True value</th><th>Error</th><th>Points</th></tr></thead>
+        <tbody id="resultBody"></tbody>
+      </table>
+    </div>
+    <p class="verdict" id="verdict"></p>
+    <p id="worked"></p>
+    <h2>Now explore</h2>
+    <p class="muted">The sensor is no longer hidden, so the sliders are unlocked. They draw a what-if curve and do not change your score.</p>
+    <div id="sliders"></div>
+    <p id="whatIfText"></p>
+    <div class="toolbar"><button class="new-sensor">New sensor</button></div>
+  </section>
+</main>
+
+<script>
+// ---------- Sensor models: the closed-form responses from the slides ----------
+const firstOrderStep = (t, K, tau) => K * (1 - Math.exp(-t / tau));
+
+// Steady-state sine response: y = K·M·sin(ωt + φ), M = 1/√(1+(ωτ)²), φ = −atan(ωτ)
+const firstOrderSine = (t, K, tau, w) =>
+  K / Math.sqrt(1 + (w * tau) ** 2) * Math.sin(w * t - Math.atan(w * tau));
+
+// Unit-step response of ωn²/(s² + 2ζωn s + ωn²), same formula as Module 3.
+// It handles every ζ because a user's guess can be any positive number.
+function stepY(t, zeta, wn) {
+  if (Math.abs(zeta - 1) < 1e-9) return 1 - Math.exp(-wn * t) * (1 + wn * t);
+  if (zeta < 1) {
+    const r = Math.sqrt(1 - zeta * zeta), wd = wn * r, phi = Math.acos(zeta);
+    return 1 - Math.exp(-zeta * wn * t) / r * Math.sin(wd * t + phi);
+  }
+  const r = Math.sqrt(zeta * zeta - 1);
+  const s1 = -wn * (zeta - r), s2 = -wn * (zeta + r);
+  return 1 + (s2 * Math.exp(s1 * t) - s1 * Math.exp(s2 * t)) / (s1 - s2);
+}
+
+// Noise-free output of any sensor object at time t
+function curve(s, t) {
+  if (s.kind === 'second') return stepY(t, s.zeta, s.wn);
+  return s.input === 'sine' ? firstOrderSine(t, s.K, s.tau, s.w) : firstOrderStep(t, s.K, s.tau);
+}
+
+// ---------- Random hidden sensors ----------
+const rand = (a, b) => a + Math.random() * (b - a);
+const logRand = (a, b) => Math.exp(rand(Math.log(a), Math.log(b)));   // even spread across decades
+const round2 = v => Math.round(v * 100) / 100;
+
+function randomSensor() {
+  if (Math.random() < 0.5) {
+    // ζ stays underdamped so the overshoot and peak-time methods work.
+    // Above about 0.65 the overshoot starts to disappear into the noise.
+    return { kind: 'second', input: 'step', zeta: round2(rand(0.15, 0.65)), wn: round2(logRand(1, 10)) };
+  }
+  const K = Math.round(rand(0.5, 5) * 10) / 10, tau = round2(logRand(0.3, 6));
+  if (Math.random() < 0.65) return { kind: 'first', input: 'step', K, tau };
+  // ωτ avoids 1 so the "below or above cutoff" question always has a clear answer
+  const wTau = Math.random() < 0.5 ? rand(0.6, 0.85) : rand(1.2, 2);
+  return { kind: 'first', input: 'sine', K, tau, w: round2(wTau / tau) };
+}
+
+// Record length. The random factor stops users reading τ straight off the axis.
+function recordLength(s) {
+  if (s.input === 'sine') return 3 * 2 * Math.PI / s.w;
+  if (s.kind === 'first') return s.tau * rand(5.5, 9);
+  const tp = Math.PI / (s.wn * Math.sqrt(1 - s.zeta * s.zeta));
+  return Math.max(rand(5, 8) / (s.zeta * s.wn), 2.5 * tp);
+}
+
+// Standard normal random number (Box–Muller)
+const gauss = () => Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(2 * Math.PI * Math.random());
+
+const SAMPLES = 400, NOISE = 0.01;   // noise std = 1% of the output scale
+
+function record(s) {
+  const T = recordLength(s), t = [], y = [];
+  // Output scale: final value for a step, output amplitude for a sine
+  const scale = s.kind === 'second' ? 1 : s.input === 'sine' ? s.K / Math.sqrt(1 + (s.w * s.tau) ** 2) : s.K;
+  for (let i = 0; i <= SAMPLES; i++) {
+    t.push(i * T / SAMPLES);
+    y.push(curve(s, t[i]) + NOISE * scale * gauss());
+  }
+  return { T, t, y };
+}
+
+// ---------- Scoring: 100 up to 10% error, then a straight line down to 0 at 50% ----------
+const FULL_MARKS_ERROR = 0.10, ZERO_MARKS_ERROR = 0.50;
+const relError = (guess, truth) => Math.abs(guess - truth) / truth;
+
+function paramScore(guess, truth) {
+  const e = relError(guess, truth);
+  if (e <= FULL_MARKS_ERROR) return 100;
+  if (e >= ZERO_MARKS_ERROR) return 0;
+  return Math.round(100 * (ZERO_MARKS_ERROR - e) / (ZERO_MARKS_ERROR - FULL_MARKS_ERROR));
+}
+
+// Which parameters the user has to estimate for each kind of sensor
+const PARAMS = {
+  first:  [{ key: 'tau',  label: 'τ',  unit: 's' }],
+  second: [{ key: 'zeta', label: 'ζ',  unit: '' },
+           { key: 'wn',   label: 'ωn', unit: 'rad/s' }]
+};
+
+// Log method: E = 1 − y/y∞, and ln(E) against t is a line with slope −1/τ.
+// y∞ comes from the tail of the record. Stop once E is small enough for noise to dominate.
+function logErrorData(t, y) {
+  const tail = y.slice(Math.floor(y.length * 0.85));
+  const final = tail.reduce((a, b) => a + b, 0) / tail.length;
+  const out = { final, t: [], lnE: [] };
+  for (let i = 0; i < t.length; i++) {
+    const E = 1 - y[i] / final;
+    if (E < 0.05) break;
+    out.t.push(t[i]);
+    out.lnE.push(Math.log(E));
+  }
+  return out;
+}
+
+// ---------- Text for each kind of round ----------
+const STEP_PREDICT = {
+  question: 'Look at how the curve starts and whether it overshoots. What kind of sensor made it?',
+  options: [{ value: 'first', text: 'First order' }, { value: 'second', text: 'Second order' }],
+  answer: s => s.kind,
+  why: s => s.kind === 'first'
+    ? 'It is first order: the curve is steepest at t = 0 and creeps up to the final value without overshooting.'
+    : 'It is second order: the curve starts flat, with zero slope, and overshoots the final value.'
+};
+
+const SINE_PREDICT = {
+  question: 'Is the stated ω below or above this sensor\'s cutoff frequency 1/τ?',
+  options: [{ value: 'below', text: 'Below the cutoff (ω < 1/τ)' }, { value: 'above', text: 'Above the cutoff (ω > 1/τ)' }],
+  answer: s => s.w * s.tau < 1 ? 'below' : 'above',
+  why: s => s.w * s.tau < 1
+    ? 'Below the cutoff: the output keeps more than 70.7% of K and lags by less than 45°.'
+    : 'Above the cutoff: the output keeps less than 70.7% of K and lags by more than 45°.'
+};
+
+const predictFor = s => s.input === 'sine' ? SINE_PREDICT : STEP_PREDICT;
+
+function hintsFor(s, stage) {
+  if (stage === 'predict') {
+    return s.input === 'sine'
+      ? ['At ω = 1/τ the output amplitude is 70.7% of K and the lag is exactly 45°.']
+      : ['A first-order curve is steepest at t = 0. A second-order curve starts flat.',
+         'Only an underdamped second-order sensor can overshoot its final value.'];
+  }
+  if (s.kind === 'second') {
+    return ['Overshoot depends only on ζ.',
+            'Find Mp = (peak − final) / final. Then ζ = −ln(Mp) / √(π² + ln²(Mp)).',
+            'Peak time then gives ωn: tp = π / (ωn √(1 − ζ²)).'];
+  }
+  if (s.input === 'sine') {
+    return ['The amplitude ratio M = (output amplitude) / K depends only on ωτ.',
+            'Rearranged: τ = √(1/M² − 1) / ω.',
+            'Or measure the time shift Δt between crests: φ = ωΔt, then τ = tan(φ) / ω.'];
+  }
+  return ['Read the final value from the flat tail first.',
+          'τ is the time at which y reaches 63.2% of the final value.',
+          'Log method: open the log-error plot. The line has slope −1/τ.'];
+}
+
+// ---------- Session score: survives moving between module pages in the same tab ----------
+const SCORE_KEY = 'encs4380-m4-score';
+let score = { rounds: 0, points: 0 };
+
+function loadScore() {
+  try { score = JSON.parse(sessionStorage.getItem(SCORE_KEY)) || score; } catch (e) { /* storage unavailable */ }
+}
+function saveScore() {
+  try { sessionStorage.setItem(SCORE_KEY, JSON.stringify(score)); } catch (e) { /* storage unavailable */ }
+}
+function showScore() {
+  $('statRounds').textContent = score.rounds;
+  $('statPoints').textContent = `${score.points} / ${score.rounds * 100}`;
+  $('statAverage').textContent = score.rounds ? Math.round(score.points / score.rounds) + '%' : '—';
+}
+
+// ---------- Page state and helpers ----------
+const $ = id => document.getElementById(id);
+let round = null, roundCounter = 0;
+
+const fmt = (v, d = 3) => Number(v.toFixed(d)).toString();
+const withUnit = (v, p) => fmt(v) + (p.unit ? ' ' + p.unit : '');
+
+const COLORS = { data: '#2457c5', ideal: '#8fa8dc', truth: '#1d2433', guess: '#e07b00', whatIf: '#8a3ffc', key: '#c62828' };
+
+const isTouch = window.matchMedia('(pointer: coarse)').matches;
+const plotCfg = { responsive: true, displayModeBar: false };
+const baseLayout = (xt, yt) => ({
+  margin: { l: 55, r: 15, t: 20, b: 45 },
+  xaxis: { title: xt, zeroline: true },
+  yaxis: { title: yt, zeroline: true },
+  legend: { orientation: 'h', x: 0, y: 1.02, yanchor: 'bottom' },   // above the plot, clear of the axis title on phones
+  hovermode: 'closest',
+  dragmode: isTouch ? false : 'zoom',       // a finger drag must scroll the page on a phone
+  paper_bgcolor: 'rgba(0,0,0,0)'
+});
+
+const READOUT = 't = %{x:.3f} s<br>y = %{y:.3f}<extra></extra>';
+const line = (s, t, name, style) => ({ x: t, y: t.map(tt => curve(s, tt)), mode: 'lines', name, line: style, hovertemplate: READOUT });
+
+// The point on the true curve an engineer would read
+function keyPoint(s) {
+  if (s.input === 'sine') return null;
+  if (s.kind === 'first') return { x: s.tau, y: firstOrderStep(s.tau, s.K, s.tau), text: '63.2% at τ' };
+  const r = Math.sqrt(1 - s.zeta * s.zeta);
+  return { x: Math.PI / (s.wn * r), y: 1 + Math.exp(-Math.PI * s.zeta / r), text: 'peak' };
+}
+
+// ---------- Drawing ----------
+function drawMain() {
+  const r = round, s = r.sensor, traces = [];
+
+  if (s.input === 'sine') {
+    traces.push({ x: r.t, y: r.t.map(t => s.K * Math.sin(s.w * t)), mode: 'lines', name: 'Ideal output K·x(t)',
+      line: { color: COLORS.ideal, width: 2 }, hovertemplate: READOUT });
+  }
+  traces.push({ x: r.t, y: r.y, mode: 'markers', name: 'Measured output', marker: { size: 4, color: COLORS.data }, hovertemplate: READOUT });
+
+  if (r.stage === 'reveal') {
+    traces.push(line(s, r.t, 'True curve', { color: COLORS.truth, width: 2.5 }));
+    traces.push(line({ ...s, ...r.guess }, r.t, 'Your guess', { color: COLORS.guess, width: 2.5, dash: 'dash' }));
+    if (r.whatIf) traces.push(line({ ...s, ...r.whatIf }, r.t, 'What-if sliders', { color: COLORS.whatIf, width: 2 }));
+    const p = keyPoint(s);
+    if (p) traces.push({ x: [p.x], y: [p.y], text: [p.text], mode: 'markers+text', textposition: 'top right', name: 'Key reading',
+      marker: { size: 11, color: COLORS.key }, hovertemplate: READOUT });
+  }
+
+  // Axes are fixed from the data so a wild guess cannot squash the plot
+  const layout = baseLayout('t (s)', 'y');
+  layout.xaxis.range = [0, r.T];
+  layout.yaxis.range = r.yRange;
+  layout.uirevision = r.id;                 // keep the user's zoom until the next sensor
+  Plotly.react('mainPlot', traces, layout, plotCfg);
+}
+
+function drawLog() {
+  const d = logErrorData(round.t, round.y);
+  $('logCaption').textContent = `Final value taken from the last 15% of the record: ${fmt(d.final)}. Pick two points on the line and compute its slope, which equals −1/τ.`;
+  Plotly.react('logPlot', [{ x: d.t, y: d.lnE, mode: 'markers', name: 'ln(E)', marker: { size: 5, color: COLORS.data },
+    hovertemplate: 't = %{x:.3f} s<br>ln(E) = %{y:.3f}<extra></extra>' }],
+    { ...baseLayout('t (s)', 'ln(E),  E = 1 − y / y∞'), uirevision: round.id, showlegend: false }, plotCfg);
+}
+
+// ---------- Hints ----------
+function resetHints() {
+  round.hintIndex = 0;
+  $('hintList').innerHTML = '';
+  $('hintBtn').hidden = false;
+}
+
+function nextHint() {
+  const hints = hintsFor(round.sensor, round.stage);
+  const li = document.createElement('li');
+  li.textContent = hints[round.hintIndex++];
+  $('hintList').appendChild(li);
+  if (round.hintIndex >= hints.length) $('hintBtn').hidden = true;
+}
+
+// ---------- Round flow ----------
+function newRound() {
+  const sensor = randomSensor();
+  const rec = record(sensor);
+  const ideal = sensor.input === 'sine' ? [sensor.K, -sensor.K] : [];
+  const lo = Math.min(...rec.y, ...ideal), hi = Math.max(...rec.y, ...ideal), pad = 0.08 * (hi - lo);
+  round = { ...rec, sensor, id: ++roundCounter, stage: 'predict', hintIndex: 0, guess: null, whatIf: null, yRange: [lo - pad, hi + pad] };
+
+  $('stimulus').innerHTML = sensor.input === 'sine'
+    ? `A <b>first-order</b> sensor with known gain <b>K = ${sensor.K}</b> is driven by <b>x(t) = sin(ωt)</b>, <b>ω = ${sensor.w} rad/s</b>. The start-up transient has already died away.`
+    : 'Unit step input (A = 1) applied at t = 0. Sensor type unknown.';
+  $('plotHelp').textContent = isTouch
+    ? 'Tap a dot to read its t and y below the plot.'
+    : 'Hover over a dot to read its t and y, or click to keep the reading below the plot. Drag a box to zoom, double-click to zoom back out.';
+  $('reading').textContent = '';
+
+  const predict = predictFor(sensor);
+  $('predictQuestion').textContent = predict.question;
+  $('predictOptions').innerHTML = predict.options
+    .map(o => `<label><input type="radio" name="predict" value="${o.value}"> ${o.text}</label>`).join('');
+  $('predictAnswer').innerHTML = '';
+  $('predictBtn').disabled = false;
+
+  $('predictCard').hidden = false;
+  $('estimateCard').hidden = true;
+  $('revealCard').hidden = true;
+  $('logPanel').hidden = true;
+  $('logBtn').textContent = 'Show log-error plot';
+  $('sliders').innerHTML = '';              // the sliders stay locked until this round's guess
+  resetHints();
+  drawMain();
+}
+
+function checkPrediction() {
+  const picked = document.querySelector('input[name=predict]:checked');
+  if (!picked) { $('predictAnswer').innerHTML = '<span class="fail">Pick an answer first.</span>'; return; }
+
+  const predict = predictFor(round.sensor);
+  const ok = picked.value === predict.answer(round.sensor);
+  $('predictAnswer').innerHTML = `<span class="${ok ? 'pass' : 'fail'}">${ok ? 'Correct.' : 'Not quite.'}</span> ${predict.why(round.sensor)}`;
+  document.querySelectorAll('input[name=predict]').forEach(el => el.disabled = true);
+  $('predictBtn').disabled = true;
+  startEstimate();
+}
+
+function startEstimate() {
+  const s = round.sensor;
+  round.stage = 'estimate';
+  resetHints();
+
+  $('estimateMethod').textContent =
+    s.kind === 'second' ? 'Use the overshoot and the peak time. Ask for a hint if you need the formulas.' :
+    s.input === 'sine'  ? 'Use the amplitude ratio or the phase lag between the two curves.' :
+                          'Use the 63.2% point or the log method.';
+  $('logTools').hidden = !(s.kind === 'first' && s.input === 'step');
+
+  $('guessFields').innerHTML = PARAMS[s.kind].map(p => `
+    <label for="guess-${p.key}">${p.label}${p.unit ? ' (' + p.unit + ')' : ''}
+      <input id="guess-${p.key}" type="number" inputmode="decimal" step="any" min="0" autocomplete="off">
+    </label>`).join('');
+  $('guessError').textContent = '';
+  $('estimateCard').hidden = false;
+}
+
+function submitGuess(event) {
+  event.preventDefault();
+  const params = PARAMS[round.sensor.kind], guess = {};
+  for (const p of params) {
+    const v = parseFloat($('guess-' + p.key).value);
+    if (!Number.isFinite(v) || v <= 0) { $('guessError').textContent = `Enter a positive number for ${p.label}.`; return; }
+    guess[p.key] = v;
+  }
+  round.guess = guess;
+  round.stage = 'reveal';
+  reveal();
+}
+
+function reveal() {
+  const r = round, s = r.sensor, params = PARAMS[s.kind];
+
+  const scores = params.map(p => paramScore(r.guess[p.key], s[p.key]));
+  const total = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+  score.rounds += 1;
+  score.points += total;
+  saveScore();
+  showScore();
+
+  $('resultBody').innerHTML = params.map((p, i) => {
+    const err = relError(r.guess[p.key], s[p.key]) * 100;
+    return `<tr><td>${p.label}</td><td>${withUnit(r.guess[p.key], p)}</td><td>${withUnit(s[p.key], p)}</td>
+      <td class="${err <= 10 ? 'pass' : 'fail'}">${err.toFixed(1)}%</td><td>${scores[i]}</td></tr>`;
+  }).join('');
+
+  $('verdict').textContent = `Round score: ${total} / 100. ` +
+    (total === 100 ? 'Within 10%, full marks.' : total >= 50 ? 'Close. Compare the dashed curve with the true curve.' : 'Far off. Compare the dashed curve with the true curve.');
+  $('worked').textContent = workedReading(s);
+
+  buildSliders();
+  $('predictCard').hidden = true;
+  $('estimateCard').hidden = true;
+  $('revealCard').hidden = false;
+  $('hintList').innerHTML = '';
+  $('hintBtn').hidden = true;
+  drawMain();
+  $('plotCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// How the true values could have been read from the curve
+function workedReading(s) {
+  if (s.kind === 'first' && s.input === 'step') {
+    return `How to read it: the final value is K = ${s.K}. 63.2% of that is ${fmt(0.632 * s.K)}, ` +
+      `and the true curve reaches it at t = τ = ${s.tau} s. The log-error line has slope −1/τ = ${fmt(-1 / s.tau)} s⁻¹.`;
+  }
+  if (s.kind === 'first') {
+    const wt = s.w * s.tau, M = 1 / Math.sqrt(1 + wt * wt), phi = Math.atan(wt);
+    return `How to read it: the output amplitude is ${fmt(M * s.K)}, so M = ${fmt(M)}. The lag is φ = ${fmt(phi * 180 / Math.PI, 1)}°, ` +
+      `a time shift of φ/ω = ${fmt(phi / s.w)} s. Then τ = tan(φ)/ω = ${s.tau} s.`;
+  }
+  const r = Math.sqrt(1 - s.zeta * s.zeta);
+  const Mp = Math.exp(-Math.PI * s.zeta / r), tp = Math.PI / (s.wn * r);
+  return `How to read it: the true peak is at tp = ${fmt(tp)} s with overshoot Mp = ${fmt(Mp * 100, 1)}%. ` +
+    `Then ζ = −ln(Mp)/√(π² + ln²(Mp)) = ${s.zeta}, and ωn = π/(tp√(1 − ζ²)) = ${s.wn} rad/s.`;
+}
+
+// ---------- What-if sliders, only built after the reveal ----------
+function buildSliders() {
+  const r = round, s = r.sensor, params = PARAMS[s.kind];
+  r.whatIf = null;
+  $('whatIfText').textContent = '';
+
+  $('sliders').innerHTML = params.map(p => {
+    // The range always holds the true value. A wild guess is clamped so the slider stays usable.
+    const start = Math.min(Math.max(r.guess[p.key], s[p.key] / 5), s[p.key] * 5);
+    const lo = Math.min(start, s[p.key]) * 0.5, hi = Math.max(start, s[p.key]) * 1.5;
+    const unit = p.unit ? ' (' + p.unit + ')' : '';
+    return `<div class="slider"><label for="s-${p.key}">${p.label}${unit}</label>
+      <input id="s-${p.key}" data-key="${p.key}" type="range" min="${lo}" max="${hi}" step="${(hi - lo) / 300}" value="${start}">
+      <output id="o-${p.key}">${fmt(start)}</output></div>`;
+  }).join('');
+
+  $('sliders').querySelectorAll('input').forEach(el => el.addEventListener('input', onSlider));
+}
+
+function onSlider() {
+  const r = round, s = r.sensor, params = PARAMS[s.kind];
+  r.whatIf = {};
+  for (const p of params) {
+    r.whatIf[p.key] = Number($('s-' + p.key).value);
+    $('o-' + p.key).textContent = fmt(r.whatIf[p.key]);
+  }
+  const parts = params.map(p => `${p.label} is ${(relError(r.whatIf[p.key], s[p.key]) * 100).toFixed(1)}% from the true value`);
+  $('whatIfText').textContent = 'What-if curve: ' + parts.join(', ') + '.';
+  drawMain();
+}
+
+// ---------- Events ----------
+document.querySelectorAll('.new-sensor').forEach(btn => btn.addEventListener('click', newRound));
+$('hintBtn').addEventListener('click', nextHint);
+$('predictBtn').addEventListener('click', checkPrediction);
+$('guessForm').addEventListener('submit', submitGuess);
+$('logBtn').addEventListener('click', () => {
+  const panel = $('logPanel');
+  panel.hidden = !panel.hidden;
+  $('logBtn').textContent = panel.hidden ? 'Show log-error plot' : 'Hide log-error plot';
+  if (!panel.hidden) drawLog();             // draw after showing, so Plotly can measure its width
+});
+$('resetScore').addEventListener('click', () => {
+  score = { rounds: 0, points: 0 };
+  saveScore();
+  showScore();
+});
+
+loadScore();
+showScore();
+newRound();
+
+// Registered after the first draw, because Plotly adds .on() to the div when it plots.
+// A tap's tooltip vanishes quickly on a phone, so the reading is also kept as text.
+$('mainPlot').on('plotly_click', e => {
+  const p = e.points[0];
+  $('reading').innerHTML = `<b>Reading:</b> t = ${p.x.toFixed(3)} s, y = ${p.y.toFixed(3)}`;
+});
+</script>
+</body>
+</html>
