@@ -38,17 +38,18 @@ Homework 1 for ENCS4380 Interfacing Techniques, Birzeit University.
 
 ## Screenshots
 
-### Module 1
-![Module 1](screenshots/module1.png)
+### Module 1: First-order time response
+![Module 1 sliders and step response](screenshots/1.png)
+![Module 1 log error plot and validation](screenshots/2.png)
 
-### Module 2
-![Module 2](screenshots/module2.png)
+### Module 2: First-order frequency response
+![Module 2 sliders and prediction](<screenshots/module2(1).png>)
+![Module 2 input and output sines](<screenshots/module2(2).png>)
+![Module 2 Bode plot](<screenshots/module2(3).png>)
+![Module 2 validation checks](<screenshots/module2(4).png>)
 
-### Module 3
-![Module 3](screenshots/module3.png)
-
-### Module 4
-![Module 4](screenshots/module4.png)
+### Module 4: Guess the Sensor
+![Module 4 reveal with true curve and score](screenshots/module4.png)
 
 ## Built with
 
