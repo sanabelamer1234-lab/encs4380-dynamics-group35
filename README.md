@@ -55,7 +55,9 @@ Homework 1 for ENCS4380 Interfacing Techniques, Birzeit University.
 ![Module 3 validation checks](<screenshots/module3(4).png>)
 
 ### Module 4: Guess the Sensor
-![Module 4 reveal with true curve and score](screenshots/module4.png)
+![Module 4 step 1: mystery curve and prediction](<screenshots/module4(1).png>)
+![Module 4 step 2: log-error plot and estimate](<screenshots/module4(2).png>)
+![Module 4 step 3: reveal with true curve and score](screenshots/module4.png)
 
 ## Built with
 
