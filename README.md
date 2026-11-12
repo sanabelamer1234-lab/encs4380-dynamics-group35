@@ -48,6 +48,12 @@ Homework 1 for ENCS4380 Interfacing Techniques, Birzeit University.
 ![Module 2 Bode plot](<screenshots/module2(3).png>)
 ![Module 2 validation checks](<screenshots/module2(4).png>)
 
+### Module 3: Second-order response
+![Module 3 parameters and step response](<screenshots/module3(1).png>)
+![Module 3 poles in the s-plane](<screenshots/module3(2).png>)
+![Module 3 state-space panel](<screenshots/module3(3).png>)
+![Module 3 validation checks](<screenshots/module3(4).png>)
+
 ### Module 4: Guess the Sensor
 ![Module 4 reveal with true curve and score](screenshots/module4.png)
 
