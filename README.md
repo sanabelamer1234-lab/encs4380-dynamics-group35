@@ -37,7 +37,7 @@ Homework 2 extends the original toolkit by introducing closed-loop feedback cont
 | # | Module | Owner | Description | Status |
 |---|--------|-------|-------------|--------|
 | P1 | [PID Playground](https://sanabelamer1234-lab.github.io/encs4380-dynamics-group35/p1.html) | Sanabel Amer | Interactive PID simulation for first-order and second-order plants | Completed |
-| P2 | Slow Sensor in the Loop | To be confirmed | Investigating the effect of sensor lag on closed-loop performance | In progress |
+| P2 | [Slow Sensor in the Loop](https://sanabelamer1234-lab.github.io/encs4380-dynamics-group35/p2.html) | Tala Hussary | Shows how a slow sensor in the feedback path increases overshoot until the loop oscillates | Completed |
 | P3 | Digital PID | To be confirmed | Exploring sampling time, digital PID control, and anti-windup | In progress |
 | P4 | Tuning Challenge | To be confirmed | Tuning PID gains to meet performance specifications | In progress |
 
@@ -117,7 +117,7 @@ https://sanabelamer1234-lab.github.io/encs4380-dynamics-group35/p1.html
 | Sanabel Amer | [sanabelamer1234-lab](https://github.com/sanabelamer1234-lab) | Module 1 | P1 – PID Playground |
 | Maria Massad | [mariamassad05](https://github.com/mariamassad05) | Module 2 | To be confirmed |
 | Shahd Hamda | [shahdhamda2005](https://github.com/shahdhamda2005) | Module 3 | To be confirmed |
-| Tala Hussary | [TalaHussary](https://github.com/TalaHussary) | Module 4 | To be confirmed |
+| Tala Hussary | [TalaHussary](https://github.com/TalaHussary) | Module 4 | P2 – Slow Sensor in the Loop |
 
 ---
 
