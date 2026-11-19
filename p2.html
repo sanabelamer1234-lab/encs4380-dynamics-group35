@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>P2 - Slow Sensor in the Loop | ENCS4380</title>
+
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <script src="pid-core.js"></script>
+
+  <style>
+    :root { font-family: Arial, sans-serif; color: #203047; background: #f4f7fb; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+
+    header { background: #19365d; color: white; padding: 22px; text-align: center; }
+    header h1 { margin: 0 0 6px; }
+    header p { margin: 0 0 10px; }
+    header nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 18px; }
+    header nav a { color: white; }
+    header nav strong { color: #ffd166; }
+
+    main { max-width: 1100px; margin: auto; padding: 20px; }
+    .panel { background: white; border-radius: 12px; padding: 20px; margin-bottom: 18px; box-shadow: 0 2px 9px #00000012; }
+    h2 { color: #19365d; margin-top: 0; }
+    .lead { line-height: 1.6; }
+
+    .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 18px; }
+    label { display: block; font-weight: bold; }
+    input[type="range"] { width: 100%; }
+    .sensor-control { background: #fff6e5; border: 1px solid #f3d29a; border-radius: 10px; padding: 12px; }
+    .hint { color: #59687b; font-size: 0.9rem; margin: 4px 0 0; }
+
+    button { padding: 9px 12px; border-radius: 6px; border: 1px solid #b9c6d5; background: #19365d; color: white; cursor: pointer; margin: 3px; font-size: 0.95rem; }
+    button:hover { background: #28568c; }
+    button.secondary { background: #e8eef7; color: #19365d; }
+    button.secondary:hover { background: #d6e2f2; }
+
+    .plot { width: 100%; height: 380px; }
+
+    .diagram-container { width: 100%; overflow-x: auto; }
+    .diagram-container svg { display: block; width: 100%; min-width: 650px; height: auto; }
+    .diagram-box { fill: #dceafd; stroke: #3263a1; stroke-width: 2; }
+    .sensor-box { fill: #fff6e5; stroke: #d08a00; stroke-width: 2; }
+    .diagram-line { stroke: #19365d; stroke-width: 2; fill: none; }
+
+    .status { padding: 12px 14px; border-radius: 8px; font-weight: 600; line-height: 1.5; margin: 0 0 14px; }
+    .status.stable { background: #e9f7ef; color: #166534; }
+    .status.near { background: #fff4e0; color: #9a5b00; }
+    .status.unstable { background: #fdecec; color: #b91c1c; }
+
+    .table-wrapper { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid #dce4ef; }
+    th { background: #edf4fd; }
+    .pass { color: #16803c; font-weight: bold; }
+    .fail { color: #c62828; font-weight: bold; }
+
+    .q { border-left: 3px solid #19365d; padding: 6px 12px; margin: 14px 0; }
+    .q label { font-weight: normal; margin: 6px 0; }
+    .answer { margin-top: 6px; line-height: 1.5; }
+
+    .note { color: #59687b; font-size: 0.9rem; line-height: 1.5; }
+
+    @media (max-width: 650px) {
+      main { padding: 10px; }
+      .panel { padding: 14px; }
+      .plot { height: 320px; }
+      th, td { padding: 8px; font-size: 0.9rem; }
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <h1>P2 - A Slow Sensor in the Loop</h1>
+  <p>ENCS4380 | Homework 2 | Group 35</p>
+  <nav aria-label="Pages">
+    <a href="index.html">Home</a>
+    <a href="p1.html">P1 - PID Playground</a>
+    <strong>P2 - Slow Sensor</strong>
+  </nav>
+</header>
+
+<main>
+
+  <!-- ================================== -->
+  <!-- IDEA AND BLOCK DIAGRAM -->
+  <!-- ================================== -->
+
+  <section class="panel">
+    <h2>The controller only controls what the sensor says</h2>
+    <p class="lead">
+      In P1 the controller saw the true output instantly. Real sensors are slow, as Homework 1 showed:
+      a sensor with time constant τ<sub>s</sub> reports a delayed, smoothed copy of the output.
+      The controller cannot see the true output, only the sensor reading y<sub>m</sub>(t),
+      so it reacts late. As τ<sub>s</sub> grows, the overshoot grows until the loop oscillates.
+    </p>
+
+    <div class="diagram-container">
+      <svg viewBox="0 0 900 260" xmlns="http://www.w3.org/2000/svg" role="img"
+           aria-label="PID loop with a first-order sensor in the feedback path">
+        <defs>
+          <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+            <path d="M0 0 L8 4 L0 8 Z" fill="#19365d"/>
+          </marker>
+        </defs>
+
+        <text x="25" y="87" font-size="17">r(t)</text>
+        <path class="diagram-line" d="M65 82 H145" marker-end="url(#arrow)"/>
+
+        <circle cx="170" cy="82" r="25" fill="white" stroke="#19365d" stroke-width="2"/>
+        <text x="161" y="75" font-size="17">+</text>
+        <text x="161" y="100" font-size="17">−</text>
+
+        <path class="diagram-line" d="M195 82 H260" marker-end="url(#arrow)"/>
+        <text x="215" y="72" font-size="14">e</text>
+
+        <rect class="diagram-box" x="265" y="52" width="160" height="60" rx="8"/>
+        <text x="345" y="87" font-size="17" text-anchor="middle">PID</text>
+
+        <path class="diagram-line" d="M425 82 H500" marker-end="url(#arrow)"/>
+        <text x="455" y="72" font-size="14">u</text>
+
+        <rect class="diagram-box" x="505" y="52" width="170" height="60" rx="8"/>
+        <text x="590" y="80" font-size="16" text-anchor="middle">Plant</text>
+        <text x="590" y="100" font-size="14" text-anchor="middle">K / (τs + 1)</text>
+
+        <path class="diagram-line" d="M675 82 H805" marker-end="url(#arrow)"/>
+        <text x="815" y="80" font-size="16">y(t)</text>
+        <text x="815" y="98" font-size="12" fill="#4a596b">true output</text>
+
+        <!-- Feedback path through the sensor -->
+        <path class="diagram-line" d="M745 82 V195 H555"/>
+        <polygon points="555,189 545,195 555,201" fill="#19365d"/>
+
+        <rect class="sensor-box" x="365" y="165" width="180" height="60" rx="8"/>
+        <text x="455" y="190" font-size="16" text-anchor="middle">Sensor</text>
+        <text id="diagramSensor" x="455" y="211" font-size="14" text-anchor="middle">1 / (τs·s + 1)</text>
+
+        <path class="diagram-line" d="M365 195 H170 V107" marker-end="url(#arrow)"/>
+        <text x="250" y="187" font-size="15">y<tspan baseline-shift="sub" font-size="11">m</tspan>(t)</text>
+        <text x="250" y="243" font-size="12" fill="#4a596b">what the controller sees</text>
+      </svg>
+    </div>
+  </section>
+
+
+  <!-- ================================== -->
+  <!-- SETTINGS -->
+  <!-- ================================== -->
+
+  <section class="panel">
+    <h2>Settings</h2>
+
+    <div class="controls">
+      <div class="sensor-control">
+        <label for="sensorTau">Sensor τ<sub>s</sub>: <span id="sensorTauValue"></span> s</label>
+        <input id="sensorTau" type="range" min="0" max="1.5" step="0.01" value="0.05">
+        <p class="hint">0 means a perfect, instant sensor.</p>
+      </div>
+
+      <div>
+        <label for="kp">Kp: <span id="kpValue"></span></label>
+        <input id="kp" type="range" min="0" max="20" step="0.1" value="2">
+      </div>
+
+      <div>
+        <label for="ki">Ki: <span id="kiValue"></span></label>
+        <input id="ki" type="range" min="0" max="20" step="0.1" value="6">
+      </div>
+
+      <div>
+        <label for="kd">Kd: <span id="kdValue"></span></label>
+        <input id="kd" type="range" min="0" max="2" step="0.01" value="0">
+      </div>
+
+      <div>
+        <label for="plantK">Plant K: <span id="plantKValue"></span></label>
+        <input id="plantK" type="range" min="0.5" max="5" step="0.1" value="1">
+      </div>
+
+      <div>
+        <label for="plantTau">Plant τ: <span id="plantTauValue"></span> s</label>
+        <input id="plantTau" type="range" min="0.2" max="5" step="0.1" value="1">
+      </div>
+
+      <div>
+        <label for="setpoint">Setpoint step: <span id="setpointValue"></span></label>
+        <input id="setpoint" type="range" min="0.5" max="5" step="0.1" value="1">
+      </div>
+    </div>
+
+    <p>
+      <button id="presetDefault">Reset</button>
+      <button class="secondary" data-ts="0">Perfect sensor</button>
+      <button class="secondary" data-ts="0.5">Slow sensor (0.5 s)</button>
+      <button class="secondary" data-ts="1.2">Too slow (1.2 s)</button>
+    </p>
+  </section>
+
+
+  <!-- ================================== -->
+  <!-- PREDICT, THEN CHECK -->
+  <!-- ================================== -->
+
+  <section class="panel">
+    <h2>Predict, then Check</h2>
+    <p>Answer first, then press <b>Show me</b> to set the sliders and see the result.</p>
+    <div id="quiz"></div>
+  </section>
+
+
+  <!-- ================================== -->
+  <!-- TRUE VS MEASURED -->
+  <!-- ================================== -->
+
+  <section class="panel">
+    <h2>True output vs what the sensor reports</h2>
+    <p id="stability" class="status" aria-live="polite"></p>
+    <div id="responsePlot" class="plot"></div>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Metric</th><th>True output y(t)</th><th>Sensor reading y<sub>m</sub>(t)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Peak overshoot</td><td id="osTrue">--</td><td id="osSensor">--</td></tr>
+          <tr><td>Peak time</td><td id="tpTrue">--</td><td id="tpSensor">--</td></tr>
+          <tr><td>Settling time (±2% of setpoint)</td><td id="tsTrue">--</td><td id="tsSensor">--</td></tr>
+          <tr><td>Steady-state error</td><td id="sseTrue">--</td><td id="sseSensor">--</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">
+      Overshoot is measured from the loop's expected final value: the setpoint when Ki &gt; 0,
+      or K·Kp/(1 + K·Kp) of it for P or PD control. Simulation: shared RK4 engine (pid-core.js), step 2 ms, control limit ±100.
+    </p>
+  </section>
+
+
+  <!-- ================================== -->
+  <!-- OVERSHOOT VS SENSOR TAU -->
+  <!-- ================================== -->
+
+  <section class="panel">
+    <h2>Overshoot as the sensor gets slower</h2>
+    <p>
+      Each point is a full closed-loop simulation with the current gains and plant, for one value of τ<sub>s</sub>.
+      The red region is where the loop is unstable and oscillates.
+    </p>
+    <div id="sweepPlot" class="plot"></div>
+    <p class="note" id="criticalNote"></p>
+  </section>
+
+
+  <!-- ================================== -->
+  <!-- VALIDATION -->
+  <!-- ================================== -->
+
+  <section class="panel">
+    <h2>P2 - Consistency Checks</h2>
+    <p>These checks compare the RK4 simulation with theory, using the plant 1/(s + 1). They run independently of the sliders.</p>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>Check</th><th>Expected</th><th>Simulation</th><th>Result</th></tr></thead>
+        <tbody id="validationBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<script src="p2.js"></script>
+</body>
+</html>
