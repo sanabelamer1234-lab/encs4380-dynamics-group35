@@ -5,9 +5,10 @@
   <meta charset="UTF-8">
   <meta name="viewport"
         content="width=device-width, initial-scale=1.0">
-  <title>ENCS4380 Dynamics Toolkit</title>
-  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 
+  <title>ENCS4380 Dynamics & PID Toolkit</title>
+
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 
   <style>
     body {
@@ -18,14 +19,8 @@
       line-height: 1.6;
     }
 
-    .control {
-      margin: 16px 0;
-    }
-
-    .plot {
-      width: 100%;
-      height: 420px;
-    }
+    .control { margin: 16px 0; }
+    .plot { width: 100%; height: 420px; }
 
     .info {
       padding: 15px;
@@ -34,9 +29,7 @@
       border-radius: 8px;
     }
 
-    input[type="range"] {
-      max-width: 100%;
-    }
+    input[type="range"] { max-width: 100%; }
 
     button {
       padding: 8px 14px;
@@ -44,9 +37,7 @@
       cursor: pointer;
     }
 
-    #predictionResult {
-      font-weight: bold;
-    }
+    #predictionResult { font-weight: bold; }
 
     table {
       width: 100%;
@@ -60,13 +51,9 @@
       text-align: center;
     }
 
-    th {
-      background: #e2eaf5;
-    }
+    th { background: #e2eaf5; }
 
-    .table-container {
-      overflow-x: auto;
-    }
+    .table-container { overflow-x: auto; }
 
     .pass {
       color: green;
@@ -78,28 +65,109 @@
       font-weight: bold;
     }
 
+    /* Homework 2 Control Section */
+    .control-section {
+      background: #f0f5fc;
+      border: 1px solid #d5e2f3;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 24px 0;
+    }
+
+    .control-section h2 {
+      color: #19365d;
+      margin-top: 0;
+    }
+
+    .control-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 15px;
+    }
+
+    .control-link {
+      display: block;
+      text-decoration: none;
+      background: #19365d;
+      color: white;
+      border-radius: 8px;
+      padding: 13px 18px;
+      font-weight: bold;
+    }
+
+    .control-link:hover {
+      background: #28568c;
+    }
+
     @media (max-width: 600px) {
-      .plot {
-        height: 350px;
-      }
+      .plot { height: 350px; }
 
       th, td {
         padding: 6px;
         font-size: 12px;
+      }
+
+      .control-links {
+        flex-direction: column;
+      }
+
+      .control-link {
+        text-align: center;
       }
     }
   </style>
 </head>
 
 <body>
-  <nav style="display:flex; flex-wrap:wrap; gap:4px 14px; margin-bottom:8px;">
-  <a href="index.html">Module 1</a>
-  <a href="module2.html">Module 2</a>
-  <a href="module3.html">Module 3</a>
-  <a href="module4.html">Module 4</a>
-</nav>
+
+  <!-- Navigation -->
+  <nav style="display:flex; flex-wrap:wrap;
+              gap:4px 14px; margin-bottom:8px;">
+    <a href="index.html">Module 1</a>
+    <a href="module2.html">Module 2</a>
+    <a href="module3.html">Module 3</a>
+    <a href="module4.html">Module 4</a>
+    <a href="#control-section">Control (HW2)</a>
+  </nav>
 
   <h1>Dynamic Characteristics Toolkit</h1>
+
+  <!-- HOMEWORK 2 CONTROL SECTION -->
+  <section class="control-section" id="control-section">
+    <h2>Control - Homework 2: PID Control Toolkit</h2>
+
+    <p>
+      Explore closed-loop feedback control using
+      proportional, integral and derivative action.
+      The PID toolkit extends the dynamic models
+      developed in Homework 1.
+    </p>
+
+    <div class="control-links">
+      <a class="control-link" href="p1.html">
+        P1 - PID Playground
+      </a>
+    </div>
+
+    <p>
+      <small>
+        P1 includes first-order and second-order
+        systems, live PID tuning, numerical simulation,
+        control signal saturation, performance metrics
+        and validation checks.
+      </small>
+    </p>
+
+    <p>
+      <small>
+        Additional PID modules will be linked here
+        as they are completed by the group.
+      </small>
+    </p>
+  </section>
+
+  <!-- HOMEWORK 1 MODULE 1 -->
   <h2>Module 1: First-Order Response</h2>
 
   <!-- Time Constant Slider -->
@@ -114,7 +182,8 @@
            step="0.5" value="2" disabled>
 
     <p id="tauHint">
-      Make your prediction first to unlock the τ slider.
+      Make your prediction first to unlock
+      the τ slider.
     </p>
   </div>
 
@@ -164,7 +233,7 @@
   </div>
 
   <!-- Ramp Information -->
-  <div id="rampInfo" class="info" style="display: none;">
+  <div id="rampInfo" class="info" style="display:none;">
     <h3>Ramp Response Information</h3>
 
     <p>
@@ -270,18 +339,17 @@
     </p>
   </div>
 
+  <!-- ORIGINAL MODULE 1 SIMULATION -->
   <script>
     const tauSlider = document.getElementById("tau");
     const gainSlider = document.getElementById("gain");
     const inputType = document.getElementById("inputType");
     const rampInfo = document.getElementById("rampInfo");
 
-    // First-order step response
     function stepResponse(t, K, tau) {
       return K * (1 - Math.exp(-t / tau));
     }
 
-    // Update one validation row
     function setValidationRow(
       number, expected, calculated, tolerance
     ) {
@@ -310,7 +378,6 @@
       return passed;
     }
 
-    // Validation Test 1
     function updateValidation(K, tau) {
       const finalValue = K;
       const tolerance = 0.005 * finalValue;
@@ -347,7 +414,6 @@
       overall.className = allPassed ? "pass" : "fail";
     }
 
-    // Update all plots and calculations
     function updatePlot() {
       const tau = Number(tauSlider.value);
       const K = Number(gainSlider.value);
@@ -361,14 +427,12 @@
         "kValue"
       ).textContent = K;
 
-      // Logarithmic error slope
       const slope = -1 / tau;
 
       document.getElementById(
         "slopeValue"
       ).textContent = slope.toFixed(4);
 
-      // Ramp information
       if (type === "ramp") {
         rampInfo.style.display = "block";
 
@@ -387,16 +451,13 @@
         rampInfo.style.display = "none";
       }
 
-      // Main plot arrays
       const t = [];
       const y = [];
       const ideal = [];
 
-      // Error plot arrays
       const errorTime = [];
       const errorFraction = [];
 
-      // FIXED time range: 0 to 50 seconds
       for (let i = 0; i <= 200; i++) {
         const time = i * 50 / 200;
 
@@ -409,7 +470,6 @@
           ideal.push(K);
 
         } else {
-          // Unit ramp response
           const output = K * (
             time - tau * (
               1 - Math.exp(-time / tau)
@@ -421,8 +481,6 @@
         }
       }
 
-      // Separate time scale for error plot:
-      // 0 to 5 tau
       for (let i = 0; i <= 200; i++) {
         const time = i * 5 * tau / 200;
 
@@ -432,7 +490,6 @@
         );
       }
 
-      // Main output curve
       const traces = [
         {
           x: t,
@@ -444,7 +501,6 @@
       ];
 
       if (type === "step") {
-        // 63.2% and 95% markers
         traces.push({
           x: [tau, 3 * tau],
           y: [
@@ -459,7 +515,6 @@
         });
 
       } else {
-        // Ideal ramp
         traces.push({
           x: t,
           y: ideal,
@@ -473,7 +528,6 @@
         });
       }
 
-      // Main response plot
       Plotly.react("plot", traces, {
         title: type === "step"
           ? "First-Order Step Response"
@@ -501,7 +555,6 @@
         responsive: true
       });
 
-      // Log Error Fraction Plot
       Plotly.react("errorPlot", [
         {
           x: errorTime,
@@ -535,11 +588,9 @@
         responsive: true
       });
 
-      // Validation
       updateValidation(K, tau);
     }
 
-    // Predict, then Check
     const predictionSelect =
       document.getElementById("prediction");
 
@@ -558,7 +609,6 @@
         return;
       }
 
-      // Unlock tau slider after prediction
       tauSlider.disabled = false;
 
       document.getElementById(
@@ -576,13 +626,12 @@
       }
     });
 
-    // Live updates
     tauSlider.addEventListener("input", updatePlot);
     gainSlider.addEventListener("input", updatePlot);
     inputType.addEventListener("change", updatePlot);
 
-    // Initial rendering
     updatePlot();
   </script>
+
 </body>
 </html>
