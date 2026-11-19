@@ -1,0 +1,896 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1">
+
+  <title>P1 - PID Playground | ENCS4380</title>
+
+  <script src="https://cdn.plot.ly/plotly-3.1.0.min.js"></script>
+  <script src="pid-core.js"></script>
+
+  <style>
+    :root {
+      font-family: Arial, sans-serif;
+      color: #203047;
+      background: #f4f7fb;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+    }
+
+    header {
+      background: #19365d;
+      color: white;
+      padding: 22px;
+      text-align: center;
+    }
+
+    main {
+      max-width: 1100px;
+      margin: auto;
+      padding: 20px;
+    }
+
+    .panel {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 18px;
+      box-shadow: 0 2px 9px #00000012;
+    }
+
+    h2 {
+      color: #19365d;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns:
+        repeat(auto-fit, minmax(230px, 1fr));
+      gap: 18px;
+    }
+
+    label {
+      display: block;
+      font-weight: bold;
+    }
+
+    input[type="range"] {
+      width: 100%;
+    }
+
+    select, button {
+      padding: 9px;
+      border-radius: 6px;
+      border: 1px solid #b9c6d5;
+    }
+
+    button {
+      background: #19365d;
+      color: white;
+      cursor: pointer;
+      margin: 3px;
+    }
+
+    button:hover {
+      background: #28568c;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns:
+        repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .metric {
+      background: #edf4fd;
+      padding: 12px;
+      text-align: center;
+      border-radius: 8px;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 1.2rem;
+      margin-top: 8px;
+    }
+
+    .plot {
+      width: 100%;
+      height: 360px;
+    }
+
+    .feedback {
+      text-align: center;
+      color: #4a596b;
+    }
+
+    .diagram-container {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    .diagram-container svg {
+      display: block;
+      width: 100%;
+      min-width: 650px;
+      height: auto;
+    }
+
+    .diagram-box {
+      fill: #dceafd;
+      stroke: #3263a1;
+      stroke-width: 2;
+    }
+
+    .diagram-line {
+      stroke: #19365d;
+      stroke-width: 2;
+      fill: none;
+    }
+
+    .plant-description {
+      margin-top: 16px;
+      padding: 12px;
+      background: #f0f5fc;
+      border-radius: 8px;
+      line-height: 1.7;
+    }
+
+    #zetaControl,
+    #wnControl {
+      display: none;
+    }
+
+    .pid-explanation {
+      display: grid;
+      grid-template-columns:
+        repeat(auto-fit, minmax(220px, 1fr));
+      gap: 15px;
+      margin-top: 15px;
+    }
+
+    .pid-info {
+      padding: 16px;
+      background: #f0f5fc;
+      border: 1px solid #dce6f5;
+      border-radius: 10px;
+      line-height: 1.6;
+    }
+
+    .pid-info h3 {
+      color: #19365d;
+      margin-top: 0;
+    }
+
+    .pid-info strong {
+      font-size: 0.9rem;
+    }
+
+    .validation-table-wrapper {
+      overflow-x: auto;
+      margin-top: 15px;
+    }
+
+    .validation-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    .validation-table th,
+    .validation-table td {
+      padding: 12px;
+      border-bottom: 1px solid #dce4ef;
+    }
+
+    .validation-table th {
+      background: #edf4fd;
+    }
+
+    .pass {
+      color: #16803c;
+      font-weight: bold;
+    }
+
+    .fail {
+      color: #c62828;
+      font-weight: bold;
+    }
+
+    .validation-note {
+      color: #59687b;
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 650px) {
+      .metrics {
+        grid-template-columns:
+          repeat(2, minmax(0, 1fr));
+      }
+
+      main {
+        padding: 10px;
+      }
+
+      .panel {
+        padding: 14px;
+      }
+
+      .plot {
+        height: 320px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <h1>P1 - PID Playground</h1>
+  <p>ENCS4380 | Homework 2 | Group 35</p>
+  <a href="index.html" style="color:white">
+    Back to Home
+  </a>
+</header>
+
+<main>
+
+  <!-- ================================== -->
+  <!-- CLOSED-LOOP BLOCK DIAGRAM -->
+  <!-- ================================== -->
+
+  <section class="panel">
+    <h2>Closed-Loop Block Diagram</h2>
+
+    <div class="diagram-container">
+      <svg viewBox="0 0 900 250"
+           xmlns="http://www.w3.org/2000/svg"
+           role="img"
+           aria-label="PID closed-loop negative feedback">
+
+        <defs>
+          <marker id="arrow"
+                  markerWidth="8"
+                  markerHeight="8"
+                  refX="7"
+                  refY="4"
+                  orient="auto">
+            <path d="M0 0 L8 4 L0 8 Z"
+                  fill="#19365d"/>
+          </marker>
+        </defs>
+
+        <text x="25" y="87" font-size="17">
+          r(t)
+        </text>
+
+        <path class="diagram-line"
+              d="M65 82 H145"
+              marker-end="url(#arrow)"/>
+
+        <circle cx="170" cy="82" r="25"
+                fill="white"
+                stroke="#19365d"
+                stroke-width="2"/>
+
+        <text x="161" y="75" font-size="17">+</text>
+        <text x="161" y="100" font-size="17">−</text>
+
+        <path class="diagram-line"
+              d="M195 82 H260"
+              marker-end="url(#arrow)"/>
+
+        <rect class="diagram-box"
+              x="265" y="52"
+              width="175" height="60" rx="8"/>
+
+        <text x="352" y="87"
+              font-size="17"
+              text-anchor="middle">
+          PID Controller
+        </text>
+
+        <path class="diagram-line"
+              d="M440 82 H510"
+              marker-end="url(#arrow)"/>
+
+        <rect class="diagram-box"
+              x="515" y="52"
+              width="165" height="60" rx="8"/>
+
+        <text x="597" y="87"
+              font-size="17"
+              text-anchor="middle">
+          Plant G(s)
+        </text>
+
+        <path class="diagram-line"
+              d="M680 82 H825"
+              marker-end="url(#arrow)"/>
+
+        <text x="835" y="87" font-size="17">
+          y(t)
+        </text>
+
+        <path class="diagram-line"
+              d="M750 82 V185 H170 V107"
+              marker-end="url(#arrow)"/>
+
+        <text x="445" y="210"
+              text-anchor="middle"
+              font-size="15"
+              fill="#4a596b">
+          Unity Negative Feedback
+        </text>
+      </svg>
+    </div>
+
+    <p class="feedback">
+      The measured output is subtracted from
+      the setpoint to produce the tracking error.
+    </p>
+  </section>
+
+
+  <!-- ================================== -->
+  <!-- CONTROLLER SETTINGS -->
+  <!-- ================================== -->
+
+  <section class="panel">
+    <h2>Controller Settings</h2>
+
+    <div class="controls">
+
+      <div>
+        <label for="plantType">Plant Type</label>
+
+        <select id="plantType">
+          <option value="first">
+            First-order Plant
+          </option>
+
+          <option value="second">
+            Second-order Plant
+          </option>
+        </select>
+      </div>
+
+      <div>
+        <label for="kp">
+          Kp: <span id="kpValue">9.00</span>
+        </label>
+
+        <input id="kp" type="range"
+               min="0" max="20"
+               step="0.1" value="9">
+      </div>
+
+      <div>
+        <label for="ki">
+          Ki: <span id="kiValue">0.00</span>
+        </label>
+
+        <input id="ki" type="range"
+               min="0" max="10"
+               step="0.1" value="0">
+      </div>
+
+      <div>
+        <label for="kd">
+          Kd: <span id="kdValue">0.00</span>
+        </label>
+
+        <input id="kd" type="range"
+               min="0" max="5"
+               step="0.05" value="0">
+      </div>
+
+      <div>
+        <label for="setpoint">
+          Setpoint:
+          <span id="setpointValue">1.00</span>
+        </label>
+
+        <input id="setpoint" type="range"
+               min="0.5" max="5"
+               step="0.1" value="1">
+      </div>
+
+      <div>
+        <label for="plantK">
+          Plant K:
+          <span id="plantKValue">1.00</span>
+        </label>
+
+        <input id="plantK" type="range"
+               min="0.5" max="5"
+               step="0.1" value="1">
+      </div>
+
+      <div id="tauControl">
+        <label for="plantTau">
+          Plant τ:
+          <span id="plantTauValue">1.00</span> s
+        </label>
+
+        <input id="plantTau" type="range"
+               min="0.5" max="10"
+               step="0.1" value="1">
+      </div>
+
+      <div id="zetaControl">
+        <label for="zeta">
+          Damping ratio ζ:
+          <span id="zetaValue">0.50</span>
+        </label>
+
+        <input id="zeta" type="range"
+               min="0.05" max="2.5"
+               step="0.05" value="0.5">
+      </div>
+
+      <div id="wnControl">
+        <label for="wn">
+          Natural frequency ωn:
+          <span id="wnValue">2.00</span> rad/s
+        </label>
+
+        <input id="wn" type="range"
+               min="0.5" max="10"
+               step="0.1" value="2">
+      </div>
+
+      <div>
+        <label for="limit">Control limit</label>
+
+        <select id="limit">
+          <option value="100">±100</option>
+          <option value="10">±10</option>
+          <option value="5">±5</option>
+          <option value="1">±1</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="plant-description">
+      <strong>Current Plant Model:</strong>
+
+      <p id="plantEquation">
+        G(s) = K / (τs + 1)
+      </p>
+
+      <p id="plantInfo">
+        First-order plant with gain K and
+        time constant τ.
+      </p>
+    </div>
+
+    <p>
+      <button id="pOnly">P only</button>
+      <button id="piPreset">PI validation</button>
+      <button id="reset">Reset</button>
+    </p>
+  </section>
+
+
+  <!-- ================================== -->
+  <!-- PREDICT THEN CHECK -->
+  <!-- ================================== -->
+
+  <section class="panel">
+    <h2>Predict, then Check</h2>
+
+    <p>
+      Predict how a gain change will affect the
+      response. Then adjust a gain and compare
+      your prediction with the simulation.
+    </p>
+
+    <label for="prediction">My prediction</label>
+
+    <select id="prediction">
+      <option value="">
+        Choose a prediction
+      </option>
+
+      <option value="faster">
+        The response will get faster
+      </option>
+
+      <option value="overshoot">
+        Overshoot will increase
+      </option>
+
+      <option value="error">
+        Steady-state error will decrease
+      </option>
+
+      <option value="slower">
+        The response will get slower
+      </option>
+    </select>
+
+    <p id="predictionFeedback"
+       aria-live="polite"></p>
+  </section>
+
+
+  <!-- ================================== -->
+  <!-- RESPONSE PLOT -->
+  <!-- ================================== -->
+
+  <section class="panel">
+    <h2>Output vs Setpoint</h2>
+    <div id="responsePlot" class="plot"></div>
+  </section>
+
+
+  <!-- ================================== -->
+  <!-- CONTROL SIGNAL -->
+  <!-- ================================== -->
+
+  <section class="panel">
+    <h2>Control Signal and Saturation</h2>
+    <div id="controlPlot" class="plot"></div>
+  </section>
+
+
+  <!-- ================================== -->
+  <!-- PERFORMANCE METRICS -->
+  <!-- ================================== -->
+
+  <section class="panel">
+    <h2>Performance Metrics</h2>
+
+    <div class="metrics">
+      <div class="metric">
+        Rise Time
+        <strong id="rise">--</strong>
+      </div>
+
+      <div class="metric">
+        Overshoot
+        <strong id="overshoot">--</strong>
+      </div>
+
+      <div class="metric">
+        Settling Time
+        <strong id="settling">--</strong>
+      </div>
+
+      <div class="metric">
+        Steady-State Error
+        <strong id="sse">--</strong>
+      </div>
+    </div>
+
+    <p>
+      Rise time: 10-90% of estimated final response.
+      Overshoot: relative to estimated final response.
+      Settling band: ±2% of setpoint.
+    </p>
+  </section>
+
+
+  <!-- ================================== -->
+  <!-- EDUCATIONAL EXPLANATION -->
+  <!-- ================================== -->
+
+  <section class="panel">
+    <h2>Understanding P, I and D Control</h2>
+
+    <p>
+      A PID controller adjusts the actuator
+      signal based on the difference between
+      the desired setpoint and the measured output.
+    </p>
+
+    <div class="pid-explanation">
+
+      <div class="pid-info">
+        <h3>P - Proportional Control</h3>
+
+        <p>
+          Proportional action responds to the
+          current tracking error. Increasing Kp
+          generally makes the system respond faster
+          and reduces steady-state error.
+          However, excessive Kp may increase
+          overshoot and oscillation.
+        </p>
+
+        <strong>P = Kp × e(t)</strong>
+      </div>
+
+      <div class="pid-info">
+        <h3>I - Integral Control</h3>
+
+        <p>
+          Integral action accumulates tracking
+          error over time. It can eliminate
+          steady-state error for a stable step
+          response when the actuator is capable
+          of reaching the target.
+          Excessive Ki may increase overshoot.
+        </p>
+
+        <strong>
+          I = Ki × integral(e(t) dt)
+        </strong>
+      </div>
+
+      <div class="pid-info">
+        <h3>D - Derivative Control</h3>
+
+        <p>
+          Derivative action reacts to the
+          rate of change of measured output.
+          It can improve damping and reduce
+          overshoot. Excessive derivative gain
+          may amplify measurement noise.
+        </p>
+
+        <strong>
+          D = -Kd × d(measuredY)/dt
+          (filtered)
+        </strong>
+      </div>
+    </div>
+
+    <h3>Key Learning Outcome</h3>
+
+    <p>
+      P primarily affects response speed,
+      I reduces steady-state error, and
+      D can reduce overshoot and oscillation.
+      Actual behavior depends on plant dynamics,
+      gain selection and actuator saturation.
+    </p>
+  </section>
+
+
+  <!-- ================================== -->
+  <!-- VALIDATION CHECKS -->
+  <!-- ================================== -->
+
+  <section class="panel" id="validationSection">
+    <h2>P1 - Validation Checks</h2>
+
+    <p>
+      These tests use the reference first-order
+      plant G(s) = 1 / (s + 1).
+      They run independently of the sliders.
+    </p>
+
+    <div class="validation-table-wrapper">
+      <table class="validation-table">
+        <thead>
+          <tr>
+            <th>Validation Test</th>
+            <th>Expected</th>
+            <th>Actual</th>
+            <th>Result</th>
+          </tr>
+        </thead>
+
+        <tbody id="p1ValidationBody">
+          <tr>
+            <td colspan="4">
+              Running validation checks...
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      <button id="runP1Validation">
+        Run Validation Checks
+      </button>
+    </p>
+
+    <p class="validation-note">
+      Numerical checks use the shared RK4
+      simulation engine. Analytical checks
+      calculate natural frequency and damping
+      ratio from the closed-loop PI equations.
+    </p>
+  </section>
+
+</main>
+
+
+<!-- ================================== -->
+<!-- MAIN P1 SCRIPT -->
+<!-- ================================== -->
+
+<script src="p1.js"></script>
+
+
+<!-- ================================== -->
+<!-- VALIDATION SCRIPT -->
+<!-- ================================== -->
+
+<script>
+(function () {
+  "use strict";
+
+  const tableBody =
+    document.getElementById("p1ValidationBody");
+
+  function addRow(name, expected, actual, passed) {
+    const row = document.createElement("tr");
+
+    const cells = [
+      name,
+      expected,
+      actual,
+      passed ? "PASS" : "FAIL"
+    ];
+
+    cells.forEach((value, index) => {
+      const cell = document.createElement("td");
+      cell.textContent = value;
+
+      if (index === 3) {
+        cell.className = passed ? "pass" : "fail";
+      }
+
+      row.appendChild(cell);
+    });
+
+    tableBody.appendChild(row);
+  }
+
+  function findCrossingTime(time, output, level) {
+    for (let i = 1; i < output.length; i++) {
+      if (
+        output[i - 1] < level &&
+        output[i] >= level
+      ) {
+        const fraction =
+          (level - output[i - 1]) /
+          (output[i] - output[i - 1]);
+
+        return time[i - 1] +
+          fraction * (time[i] - time[i - 1]);
+      }
+    }
+
+    return null;
+  }
+
+  function runValidation() {
+    tableBody.innerHTML = "";
+
+    try {
+      // P-only reference case
+      const p = simulatePID({
+        plantType: "first",
+        K: 1,
+        tau: 1,
+        Kp: 9,
+        Ki: 0,
+        Kd: 0,
+        setpoint: 1,
+        duration: 10,
+        dt: 0.001,
+        uMin: -100,
+        uMax: 100
+      });
+
+      const pMetrics = calculateMetrics(p, 1);
+
+      addRow(
+        "P-only steady-state error",
+        "10.00%",
+        pMetrics.steadyStateError.toFixed(3) + "%",
+        Math.abs(pMetrics.steadyStateError - 10) < 0.1
+      );
+
+      // Closed-loop final value = 0.9
+      // At one time constant, the output reaches
+      // 63.212% of its final value.
+      const finalP = 0.9;
+
+      const t63 = findCrossingTime(
+        p.time,
+        p.output,
+        finalP * (1 - Math.exp(-1))
+      );
+
+      addRow(
+        "P-only closed-loop time constant",
+        "0.100 s",
+        t63 === null
+          ? "Not reached"
+          : t63.toFixed(4) + " s",
+        t63 !== null && Math.abs(t63 - 0.1) < 0.005
+      );
+
+      // PI reference case
+      const K = 1;
+      const tau = 1;
+      const Kp = 1;
+      const Ki = 1;
+
+      const omegaN = Math.sqrt(K * Ki / tau);
+
+      const zeta =
+        (1 + K * Kp) /
+        (2 * Math.sqrt(tau * K * Ki));
+
+      addRow(
+        "PI natural frequency",
+        "1.000 rad/s",
+        omegaN.toFixed(3) + " rad/s",
+        Math.abs(omegaN - 1) < 0.001
+      );
+
+      addRow(
+        "PI damping ratio",
+        "1.000",
+        zeta.toFixed(3),
+        Math.abs(zeta - 1) < 0.001
+      );
+
+      const pi = simulatePID({
+        plantType: "first",
+        K: 1,
+        tau: 1,
+        Kp: 1,
+        Ki: 1,
+        Kd: 0,
+        setpoint: 1,
+        duration: 20,
+        dt: 0.001,
+        uMin: -100,
+        uMax: 100
+      });
+
+      const piMetrics = calculateMetrics(pi, 1);
+
+      addRow(
+        "PI steady-state error",
+        "≈ 0%",
+        piMetrics.steadyStateError.toFixed(4) + "%",
+        Math.abs(piMetrics.steadyStateError) < 0.1
+      );
+
+    } catch (error) {
+      tableBody.innerHTML = "";
+
+      const row = document.createElement("tr");
+      const cell = document.createElement("td");
+
+      cell.colSpan = 4;
+      cell.textContent =
+        "Validation error: " + error.message;
+
+      cell.className = "fail";
+
+      row.appendChild(cell);
+      tableBody.appendChild(row);
+    }
+  }
+
+  document.getElementById("runP1Validation")
+    .addEventListener("click", runValidation);
+
+  // Run automatically when the page loads
+  runValidation();
+})();
+</script>
+
+</body>
+</html>
