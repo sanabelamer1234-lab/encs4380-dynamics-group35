@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1">
+
+  <title>P4 - Tuning Challenge | ENCS4380</title>
+
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <script src="pid-core.js"></script>
+
+  <style>
+    :root {
+      font-family: Arial, sans-serif;
+      color: #203047;
+      background: #f4f7fb;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+    }
+
+    header {
+      background: #19365d;
+      color: white;
+      padding: 22px;
+      text-align: center;
+    }
+
+    main {
+      max-width: 1100px;
+      margin: auto;
+      padding: 20px;
+    }
+
+    .panel {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 18px;
+      box-shadow: 0 2px 9px #00000012;
+    }
+
+    h2 {
+      color: #19365d;
+      margin-top: 0;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns:
+        repeat(auto-fit, minmax(230px, 1fr));
+      gap: 18px;
+    }
+
+    label {
+      display: block;
+      font-weight: bold;
+    }
+
+    input[type="range"] {
+      width: 100%;
+    }
+
+    select, button {
+      padding: 9px;
+      border-radius: 6px;
+      border: 1px solid #b9c6d5;
+      font-size: 0.95rem;
+    }
+
+    button {
+      background: #19365d;
+      color: white;
+      cursor: pointer;
+      margin: 3px;
+    }
+
+    button:hover {
+      background: #28568c;
+    }
+
+    button.secondary {
+      background: #e8edf8;
+      color: #19365d;
+    }
+
+    button.secondary:hover {
+      background: #d6e0f3;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+
+    .stats {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 28px;
+    }
+
+    .stat b {
+      font-size: 1.3rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stat span {
+      color: #5b6475;
+      font-size: 0.9rem;
+      margin-left: 4px;
+    }
+
+    .stats button {
+      margin-left: auto;
+    }
+
+    .spec-list {
+      line-height: 1.9;
+      margin: 10px 0;
+      padding-left: 22px;
+    }
+
+    .muted {
+      color: #5b6475;
+    }
+
+    .plot {
+      width: 100%;
+      height: 360px;
+    }
+
+    .feedback {
+      text-align: center;
+      color: #4a596b;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    th, td {
+      padding: 12px;
+      border-bottom: 1px solid #dce4ef;
+    }
+
+    th {
+      background: #edf4fd;
+    }
+
+    .pass {
+      color: #16803c;
+      font-weight: bold;
+    }
+
+    .fail {
+      color: #c62828;
+      font-weight: bold;
+    }
+
+    #status, #liveScore {
+      font-weight: 600;
+    }
+
+    .hints {
+      margin: 8px 0 0;
+      padding-left: 20px;
+      line-height: 1.6;
+    }
+
+    .legend-note {
+      font-size: 0.9rem;
+      color: #5b6475;
+    }
+
+    @media (max-width: 650px) {
+      main {
+        padding: 10px;
+      }
+
+      .panel {
+        padding: 14px;
+      }
+
+      .plot {
+        height: 320px;
+      }
+
+      .stats button {
+        margin-left: 0;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <h1>P4 - Tuning Challenge</h1>
+  <p>ENCS4380 | Homework 2 | Group 35</p>
+  <a href="index.html" style="color:white">
+    Back to Home
+  </a>
+</header>
+
+<main>
+
+  <!-- ================================== -->
+  <!-- SESSION SCORE -->
+  <!-- ================================== -->
+
+  <section class="panel stats" aria-label="Session score">
+    <div class="stat">
+      <b id="statRounds">0</b><span>rounds</span>
+    </div>
+
+    <div class="stat">
+      <b id="statPoints">0</b><span>points</span>
+    </div>
+
+    <div class="stat">
+      <b id="statAverage">—</b><span>average</span>
+    </div>
+
+    <button class="secondary" id="resetScore">
+      Reset score
+    </button>
+  </section>
+
+
+  <!-- ================================== -->
+  <!-- THE CHALLENGE AND ITS SPEC -->
+  <!-- ================================== -->
+
+  <section class="panel">
+    <h2>The Challenge</h2>
+
+    <p>
+      A hidden plant sits inside a closed loop with a PID
+      controller. You cannot see its parameters. Tune
+      Kp, Ki and Kd until the response meets every part of
+      this spec, then submit your design.
+    </p>
+
+    <strong>Spec to meet:</strong>
+    <ul class="spec-list" id="specList"></ul>
+
+    <p class="muted" id="setpointNote"></p>
+
+    <p>
+      <label for="difficulty" style="display:inline">
+        Difficulty (next plant):
+      </label>
+
+      <select id="difficulty">
+        <option value="easy">Easy</option>
+        <option value="normal" selected>Normal</option>
+        <option value="hard">Hard</option>
+      </select>
+
+      <button id="newBtn">New plant</button>
+      <button class="secondary" id="hintBtn">Hint</button>
+    </p>
+
+    <ul class="hints" id="hintList" aria-live="polite"></ul>
+  </section>
+
+
+  <!-- ================================== -->
+  <!-- CONTROLLER GAINS -->
+  <!-- ================================== -->
+
+  <section class="panel">
+    <h2>Controller Gains</h2>
+
+    <div class="controls">
+      <div>
+        <label for="kp">
+          Kp: <span id="kpValue">1.00</span>
+        </label>
+
+        <input id="kp" type="range"
+               min="0" max="20" step="0.1" value="1">
+      </div>
+
+      <div>
+        <label for="ki">
+          Ki: <span id="kiValue">0.00</span>
+        </label>
+
+        <input id="ki" type="range"
+               min="0" max="10" step="0.1" value="0">
+      </div>
+
+      <div>
+        <label for="kd">
+          Kd: <span id="kdValue">0.00</span>
+        </label>
+
+        <input id="kd" type="range"
+               min="0" max="5" step="0.05" value="0">
+      </div>
+    </div>
+
+    <p>
+      <button class="secondary" id="resetGains">
+        Reset gains
+      </button>
+
+      <button class="secondary" id="openLoopBtn">
+        Run open-loop step test
+      </button>
+
+      <button id="submitBtn">Submit design</button>
+    </p>
+
+    <p id="status" aria-live="polite"></p>
+  </section>
+
+
+  <!-- ================================== -->
+  <!-- OPEN-LOOP STEP TEST -->
+  <!-- ================================== -->
+
+  <section class="panel" id="openLoopCard" hidden>
+    <h2>Open-Loop Step Test</h2>
+
+    <p class="muted">
+      A noisy unit-step record of the plant on its own,
+      with no controller. Read its shape (first or second
+      order, final value, speed) the way you did in
+      Module 4.
+    </p>
+
+    <div id="openLoopPlot" class="plot"></div>
+  </section>
+
+
+  <!-- ================================== -->
+  <!-- PREDICT THEN CHECK -->
+  <!-- ================================== -->
+
+  <section class="panel">
+    <h2>Predict, then Check</h2>
+
+    <p>
+      Predict how a gain change will affect the
+      response. Then adjust a gain and compare
+      your prediction with the simulation.
+    </p>
+
+    <label for="prediction">My prediction</label>
+
+    <select id="prediction">
+      <option value="">Choose a prediction</option>
+
+      <option value="faster">
+        The response will get faster
+      </option>
+
+      <option value="overshoot">
+        Overshoot will increase
+      </option>
+
+      <option value="error">
+        Steady-state error will decrease
+      </option>
+
+      <option value="slower">
+        The response will get slower
+      </option>
+    </select>
+
+    <p id="predictionFeedback" class="feedback"
+       aria-live="polite"></p>
+  </section>
+
+
+  <!-- ================================== -->
+  <!-- PLOTS -->
+  <!-- ================================== -->
+
+  <section class="panel">
+    <h2>Output vs Setpoint</h2>
+    <div id="responsePlot" class="plot"></div>
+
+    <p class="legend-note">
+      Green band: ±2% settling band around the setpoint.
+      Orange dotted line: overshoot limit. Purple dotted
+      line: settling-time limit. The output must be inside
+      the green band before the purple line, and stay there.
+    </p>
+  </section>
+
+  <section class="panel">
+    <h2>Control Signal and Saturation</h2>
+    <div id="controlPlot" class="plot"></div>
+  </section>
+
+
+  <!-- ================================== -->
+  <!-- SPEC RESULTS -->
+  <!-- ================================== -->
+
+  <section class="panel">
+    <h2>Spec Check</h2>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Spec part</th>
+            <th>Requirement</th>
+            <th>Your result</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+
+        <tbody id="specBody"></tbody>
+      </table>
+    </div>
+
+    <p id="liveScore" aria-live="polite"></p>
+
+    <p class="legend-note">
+      Each part is worth 25 points. Metrics come from the
+      shared RK4 simulation in pid-core.js. A response that
+      is still changing at the end of the simulation is
+      reported as not settled and fails the parts that need
+      a final value.
+    </p>
+  </section>
+
+
+  <!-- ================================== -->
+  <!-- REVEAL (AFTER SUBMIT) -->
+  <!-- ================================== -->
+
+  <section class="panel" id="revealCard" hidden>
+    <h2>The Reveal</h2>
+
+    <p class="verdict" id="revealScore"
+       style="font-weight:bold; font-size:1.15rem"></p>
+
+    <p><b>Hidden plant:</b> <span id="revealPlant"></span></p>
+    <p id="revealYours"></p>
+    <p id="revealReference"></p>
+
+    <p>
+      <button class="secondary" id="loadReference">
+        Load these gains and see the response
+      </button>
+
+      <button onclick="document.getElementById('newBtn').click()">
+        Next plant
+      </button>
+    </p>
+  </section>
+
+</main>
+
+<script src="p4.js"></script>
+
+</body>
+</html>
