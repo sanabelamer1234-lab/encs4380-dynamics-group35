@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>P3 - Digital PID | ENCS4380</title>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <style>
+    :root { font-family: Arial, sans-serif; color: #203047; background: #f4f7fb; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    header { background: #19365d; color: white; padding: 22px; text-align: center; }
+    header h1 { margin: 0 0 6px; }
+    header p { margin: 0 0 10px; }
+    header nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 18px; }
+    header nav a { color: white; text-decoration: none; }
+    header nav strong { color: #ffd166; }
+    main { max-width: 1100px; margin: auto; padding: 20px; }
+    .panel { background: white; border-radius: 12px; padding: 20px; margin-bottom: 18px; box-shadow: 0 2px 9px #00000012; }
+    h2 { color: #19365d; margin-top: 0; }
+    .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 18px; }
+    label { display: block; font-weight: bold; margin-bottom: 5px; }
+    input[type="range"] { width: 100%; }
+    button { padding: 9px 12px; border-radius: 6px; border: 1px solid #b9c6d5; background: #19365d; color: white; cursor: pointer; margin: 3px; font-size: 0.95rem; }
+    button:hover { background: #28568c; }
+    button.toggle-on { background: #16803c; border-color: #16803c; }
+    button.toggle-off { background: #c62828; border-color: #c62828; }
+    .plot { width: 100%; height: 380px; }
+    .code-box { background-color: #f8f9fa; padding: 15px; border-radius: 8px; font-family: monospace; white-space: pre-wrap; font-size: 14px; border: 1px solid #dce4ef; color: #333;}
+    .msg { color: #16803c; font-weight: bold; margin-left: 10px; }
+    .diagram-container { width: 100%; overflow-x: auto; margin-bottom: 15px; }
+    .diagram-container svg { display: block; width: 100%; min-width: 600px; height: auto; }
+    .diagram-box { fill: #dceafd; stroke: #3263a1; stroke-width: 2; }
+    .diagram-line { stroke: #19365d; stroke-width: 2; fill: none; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th, td { padding: 10px; border-bottom: 1px solid #dce4ef; }
+    th { background: #edf4fd; }
+    .pass { color: #16803c; font-weight: bold; }
+    .fail { color: #c62828; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>P3 - Digital PID</h1>
+  <p>ENCS4380 | Homework 2 | Group 35</p>
+  <nav aria-label="Pages">
+    <a href="index.html">Home</a>
+    <a href="p1.html">P1 - PID Playground</a>
+    <a href="p2.html">P2 - Slow Sensor</a>
+    <strong>P3 - Digital PID</strong>
+  </nav>
+</header>
+
+<main>
+
+  <!-- Block Diagram -->
+  <section class="panel">
+    <h2>Digital PID Block Diagram</h2>
+    <p class="lead">A digital controller samples the error at discrete time steps (Ts) and calculates the control signal.</p>
+    
+    <div class="diagram-container">
+      <svg viewBox="0 0 900 200" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+            <path d="M0 0 L8 4 L0 8 Z" fill="#19365d"/>
+          </marker>
+        </defs>
+        <text x="25" y="90" font-size="17">r(t)</text>
+        <path class="diagram-line" d="M65 85 H145" marker-end="url(#arrow)"/>
+        <circle cx="170" cy="85" r="25" fill="white" stroke="#19365d" stroke-width="2"/>
+        <text x="161" y="78" font-size="17">+</text>
+        <text x="161" y="103" font-size="17">−</text>
+        <path class="diagram-line" d="M195 85 H260" marker-end="url(#arrow)"/>
+        <text x="215" y="75" font-size="14">e[k]</text>
+        <rect class="diagram-box" x="265" y="55" width="180" height="60" rx="8"/>
+        <text x="355" y="85" font-size="17" text-anchor="middle">Digital PID</text>
+        <text x="355" y="105" font-size="12" text-anchor="middle">(Ts = Sampling Time)</text>
+        <path class="diagram-line" d="M445 85 H520" marker-end="url(#arrow)"/>
+        <text x="475" y="75" font-size="14">u[k]</text>
+        <rect class="diagram-box" x="525" y="55" width="160" height="60" rx="8"/>
+        <text x="605" y="90" font-size="17" text-anchor="middle">Plant</text>
+        <path class="diagram-line" d="M685 85 H805" marker-end="url(#arrow)"/>
+        <text x="815" y="90" font-size="16">y(t)</text>
+        <path class="diagram-line" d="M745 85 V160 H170 V110" marker-end="url(#arrow)"/>
+        <text x="450" y="150" font-size="15">Feedback (Sensor)</text>
+      </svg>
+    </div>
+  </section>
+
+  <!-- Settings -->
+  <section class="panel">
+    <h2>Controller Settings</h2>
+    <div class="controls">
+      <div>
+        <label>Kp: <span id="kpVal">2.0</span></label>
+        <input type="range" id="kp" min="0" max="10" step="0.1" value="2.0">
+      </div>
+      <div>
+        <label>Ki: <span id="kiVal">1.0</span></label>
+        <input type="range" id="ki" min="0" max="5" step="0.1" value="1.0">
+      </div>
+      <div>
+        <label>Kd: <span id="kdVal">0.5</span></label>
+        <input type="range" id="kd" min="0" max="5" step="0.1" value="0.5">
+      </div>
+      <div>
+        <label>Sampling Time Ts (s): <span id="tsVal">0.10</span></label>
+        <input type="range" id="ts" min="0.01" max="1" step="0.01" value="0.10">
+      </div>
+    </div>
+    <div style="margin-top: 15px;">
+      <label>Anti-windup: <button id="antiWindupBtn" class="toggle-off" onclick="toggleAntiWindup()">OFF</button></label>
+    </div>
+  </section>
+
+  <!-- Control Signal Plot -->
+  <section class="panel">
+    <h2>Control Signal u[k] (Stair-step)</h2>
+    <p>As Sampling Time (Ts) increases, the control signal updates less frequently (larger steps), degrading performance.</p>
+    <div id="controlPlot" class="plot"></div>
+  </section>
+
+  <!-- Arduino Code -->
+  <section class="panel">
+    <h2>Generated Arduino Code</h2>
+    <p>This code runs the digital PID loop at the selected sampling time. Copy it into your Arduino IDE.</p>
+    <div class="code-box" id="arduinoCode"></div>
+    <div style="margin-top: 15px;">
+      <button onclick="copyCode()">Copy Arduino Code</button>
+      <span id="copyMsg" class="msg"></span>
+    </div>
+  </section>
+
+  <!-- Predict, then Check -->
+  <section class="panel">
+    <h2>Predict, then Check</h2>
+    <p>Predict how decreasing the Sampling Time (Ts) will affect the system's control signal.</p>
+    <label for="prediction">My prediction</label>
+    <select id="prediction" style="padding: 8px; border-radius: 5px; border: 1px solid #b9c6d5;">
+      <option value="">Choose a prediction</option>
+      <option value="smooth">The control signal will become smoother (smaller steps)</option>
+      <option value="blocky">The control signal will become more blocky (larger steps)</option>
+      <option value="same">No change</option>
+    </select>
+    <p id="predictionFeedback" style="font-weight: bold; margin-top: 10px;" aria-live="polite"></p>
+  </section>
+
+  <!-- Validation -->
+  <section class="panel">
+    <h2>P3 - Validation Checks</h2>
+    <p>These checks verify the digital simulation and sampling time behavior. They run automatically.</p>
+    <div style="overflow-x: auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Validation Test</th>
+            <th>Expected</th>
+            <th>Actual</th>
+            <th>Result</th>
+          </tr>
+        </thead>
+        <tbody id="validationBody">
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<script src="p3.js"></script>
+</body>
+</html>
