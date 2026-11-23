@@ -116,12 +116,35 @@
       background: #28568c;
     }
 
+    .system-link {
+      background: #285e69;
+    }
+
+    .system-link:hover,
+    .system-link:focus {
+      background: #19454e;
+    }
+
     .module-description {
       margin-top: 22px;
     }
 
     .module-description p {
       margin: 10px 0;
+    }
+
+    .system-description {
+      border-top: 1px solid #cedaea;
+      margin-top: 20px;
+      padding-top: 12px;
+    }
+
+    .hardware-note {
+      background: #fff7e6;
+      border-left: 4px solid #d59a28;
+      padding: 12px;
+      border-radius: 4px;
+      margin-top: 12px;
     }
 
     @media (max-width: 600px) {
@@ -155,6 +178,7 @@
     <a href="module3.html">Module 3</a>
     <a href="module4.html">Module 4</a>
     <a href="#control-section">Control (HW2)</a>
+    <a href="my-system.html">My System</a>
   </nav>
 
   <h1>Dynamic Characteristics Toolkit</h1>
@@ -175,9 +199,11 @@
       The toolkit consists of four interactive modules
       covering PID tuning, sensor lag, digital PID
       control, and controller tuning challenges.
+      The My System application connects these
+      concepts to the Shams Micromouse project.
     </p>
 
-    <!-- All four PID modules -->
+    <!-- Homework 2 Modules and Project Application -->
     <div class="control-links">
 
       <a class="control-link" href="p1.html">
@@ -196,9 +222,14 @@
         P4 - Tuning Challenge
       </a>
 
+      <a class="control-link system-link"
+         href="my-system.html">
+        My System - Shams Micromouse
+      </a>
+
     </div>
 
-    <!-- Module Descriptions -->
+    <!-- PID Module Descriptions -->
     <div class="module-description">
 
       <h3>PID Control Modules</h3>
@@ -231,6 +262,45 @@
         challenges and evaluate controller
         performance.
       </p>
+
+    </div>
+
+    <!-- Project Application -->
+    <div class="system-description">
+
+      <h3>My System - Shams Micromouse</h3>
+
+      <p>
+        The project application investigates DC motor
+        speed control for the Shams Micromouse robot.
+        A first-order motor model is combined with
+        PID feedback to study speed tracking,
+        controller tuning, and PWM saturation.
+      </p>
+
+      <p>
+        The page presents the motor model,
+        selected controller gains, simulated
+        speed response, control signal,
+        performance specifications, and an
+        Arduino-style PID code template.
+      </p>
+
+      <p>
+        The application builds on the concepts
+        studied in P1, P2, and P3.
+      </p>
+
+      <div class="hardware-note">
+        <strong>Hardware Testing Status:</strong>
+        The actual motor and encoder are not
+        yet ready for experimental testing.
+        Current model parameters are illustrative,
+        and simulation results are not
+        presented as hardware measurements.
+        Experimental validation is planned
+        once the hardware becomes available.
+      </div>
 
     </div>
 
