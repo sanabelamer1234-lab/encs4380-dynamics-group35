@@ -1,0 +1,822 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My System - Shams Micromouse</title>
+<script src="https://cdn.plot.ly/plotly-3.1.0.min.js"></script>
+<style>
+* { box-sizing: border-box; }
+body {
+  max-width: 1100px;
+  margin: 24px auto;
+  padding: 0 16px;
+  font-family: Arial, sans-serif;
+  line-height: 1.6;
+  background: #f7f9fd;
+  color: #243650;
+}
+h1,h2,h3 { color: #19365d; }
+nav a { margin-right: 12px; }
+.card {
+  background: white;
+  padding: 22px;
+  margin: 18px 0;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px #00000010;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit,minmax(180px,1fr));
+  gap: 14px;
+}
+label { display: block; font-weight: bold; }
+input {
+  width: 100%;
+  display: block;
+  margin-top: 7px;
+  padding: 10px;
+  border: 1px solid #b8c9de;
+  border-radius: 6px;
+}
+button,.btn {
+  display: inline-block;
+  padding: 11px 17px;
+  margin: 7px 5px 7px 0;
+  border: 0;
+  border-radius: 7px;
+  background: #19365d;
+  color: white;
+  text-decoration: none;
+  cursor: pointer;
+}
+.note {
+  background: #fff5df;
+  border-left: 4px solid #d79b24;
+  padding: 14px;
+  margin: 14px 0;
+}
+.equation {
+  text-align: center;
+  background: #edf3fa;
+  padding: 15px;
+  font-size: 19px;
+  border-radius: 8px;
+}
+.plot { height: 360px; width: 100%; }
+.metric {
+  padding: 13px;
+  background: #edf3fa;
+  border-radius: 8px;
+}
+.metric strong {
+  display: block;
+  font-size: 20px;
+}
+table { width: 100%; border-collapse: collapse; }
+th,td {
+  border: 1px solid #d6e0eb;
+  padding: 10px;
+  text-align: left;
+}
+th { background: #edf3fa; }
+.table-scroll { overflow-x: auto; }
+.pass { color: green; font-weight: bold; }
+.fail { color: #b02b2b; font-weight: bold; }
+pre {
+  background: #eff3f9;
+  padding: 15px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  border-radius: 8px;
+}
+#error { color: #af2929; font-weight: bold; }
+small { color: #526680; }
+@media(max-width:600px) {
+  .plot { height: 310px; }
+  .card { padding: 15px; }
+}
+</style>
+</head>
+
+<body>
+
+<nav>
+  <a href="index.html">Home</a>
+  <a href="p1.html">P1</a>
+  <a href="p2.html">P2</a>
+  <a href="p3.html">P3</a>
+  <a href="p4.html">P4</a>
+</nav>
+
+<h1>My System: Shams Micromouse</h1>
+<p>
+  <strong>DC Motor Speed Control Using PID</strong>
+  <br>
+  ENCS4380 - Homework 2 | Group 35
+</p>
+
+<section class="card">
+<h2>1. Project Application</h2>
+
+<p>
+The Shams Micromouse robot uses drive motors
+to control wheel motion. This application
+investigates how a PID controller can track
+a desired motor speed using encoder feedback.
+</p>
+
+<div class="equation">
+  Target Speed → PID → DC Motor → Actual Speed
+  <br>
+  ↖ Encoder Feedback
+</div>
+
+<div class="note">
+<strong>Hardware status: Not yet tested</strong>
+<p>
+The actual motor and encoder are not ready.
+This application currently uses an illustrative
+first-order motor model. No experimental motor
+measurements or physical controller tests
+are claimed.
+</p>
+</div>
+</section>
+
+<section class="card">
+<h2>2. Motor Model and Parameters</h2>
+
+<div class="equation">
+  G(s) = K / (τs + 1)
+</div>
+
+<p>
+K represents the steady-state motor speed gain
+and τ represents its time constant.
+</p>
+
+<p>
+The numerical values below are hypothetical
+simulation parameters, not motor datasheet
+values or measured experimental parameters.
+</p>
+
+<div class="grid">
+  <label>Motor Gain K
+    <input id="K" type="number"
+      value="1" min="0.1" max="5" step="0.1">
+  </label>
+
+  <label>Motor Time Constant τ (s)
+    <input id="tau" type="number"
+      value="0.25" min="0.02" max="3" step="0.01">
+  </label>
+
+  <label>Desired Speed (normalized)
+    <input id="target" type="number"
+      value="0.6" min="0.1" max="1" step="0.05">
+  </label>
+</div>
+
+<p>
+<strong>Parameter source:</strong>
+Illustrative assumptions pending real PWM step
+testing and encoder measurements.
+</p>
+</section>
+
+<section class="card">
+<h2>3. PID Controller Design</h2>
+
+<p>
+Adjust the gains to control the motor speed.
+The initial PI gains are selected to give
+an ideal linear-model damping ratio of about 0.707
+for K = 1 and τ = 0.25 s.
+</p>
+
+<div class="grid">
+  <label>Proportional Gain Kp
+    <input id="Kp" type="number"
+      value="1" min="0" max="100" step="0.1">
+  </label>
+
+  <label>Integral Gain Ki
+    <input id="Ki" type="number"
+      value="8" min="0" max="100" step="0.1">
+  </label>
+
+  <label>Derivative Gain Kd
+    <input id="Kd" type="number"
+      value="0" min="0" max="20" step="0.01">
+  </label>
+
+  <label>Sensor Time Constant τs (s)
+    <input id="sensorTau" type="number"
+      value="0" min="0" max="1" step="0.01">
+  </label>
+
+  <label>Proposed Sampling Time Ts (s)
+    <input id="Ts" type="number"
+      value="0.01" min="0.001" max="0.2"
+      step="0.001">
+  </label>
+</div>
+
+<p>
+<strong>Theoretical PI model:</strong>
+With Kd = 0 and without saturation or
+sensor delay, the closed-loop denominator is:
+</p>
+<div class="equation">
+  τs² + (1 + KKp)s + KKi
+</div>
+
+<p>
+The estimated damping ratio for the ideal
+continuous PI model is:
+</p>
+<div class="equation">
+  ζ = (1 + KKp) / (2√(τKKi))
+</div>
+
+<p>
+<strong id="damping">Estimated ζ: --</strong>
+</p>
+<p id="dampingNote"></p>
+
+<button id="simulate" type="button">
+Run Simulation
+</button>
+<button id="reset" type="button">
+Reset to Initial Design
+</button>
+
+<p id="error" role="alert"></p>
+</section>
+
+<section class="card">
+<h2>4. Simulation Results</h2>
+
+<p>
+The model is integrated using the shared
+fourth-order Runge-Kutta simulation engine
+developed for the PID Playground.
+</p>
+
+<div id="speedPlot" class="plot"></div>
+<div id="pwmPlot" class="plot"></div>
+
+<p>
+The P-only reference uses the same Kp value
+with Ki = Kd = 0.
+</p>
+</section>
+
+<section class="card">
+<h2>5. Performance Measurements</h2>
+
+<div class="grid">
+  <div class="metric">
+    Rise Time
+    <strong id="rise">--</strong>
+  </div>
+  <div class="metric">
+    Overshoot
+    <strong id="overshoot">--</strong>
+  </div>
+  <div class="metric">
+    Settling Time
+    <strong id="settling">--</strong>
+  </div>
+  <div class="metric">
+    Steady-State Error
+    <strong id="sse">--</strong>
+  </div>
+</div>
+
+<p id="settledText"></p>
+</section>
+
+<section class="card">
+<h2>6. Design Specification</h2>
+
+<p>
+For the Micromouse speed loop, a practical
+damping-ratio objective from the lecture is:
+</p>
+
+<div class="equation">
+  0.6 ≤ ζ ≤ 0.8
+</div>
+
+<p>
+The normalized PWM command must stay between
+0 and 1, corresponding to 0–100%.
+Additional preliminary performance targets
+are used to evaluate the simulated response.
+</p>
+
+<div class="table-scroll">
+<table>
+<thead>
+<tr>
+<th>Specification</th>
+<th>Target</th>
+<th>Result</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PI damping ratio</td>
+<td>0.6–0.8</td>
+<td id="zResult">--</td>
+<td id="zStatus">--</td>
+</tr>
+<tr>
+<td>Overshoot</td>
+<td>≤ 10% (illustrative)</td>
+<td id="osResult">--</td>
+<td id="osStatus">--</td>
+</tr>
+<tr>
+<td>Settling time</td>
+<td>≤ 3 s (illustrative)</td>
+<td id="tsResult">--</td>
+<td id="tsStatus">--</td>
+</tr>
+<tr>
+<td>Absolute steady-state error</td>
+<td>≤ 2% (illustrative)</td>
+<td id="ssResult">--</td>
+<td id="ssStatus">--</td>
+</tr>
+<tr>
+<td>PWM range</td>
+<td>0–100%</td>
+<td id="pwmResult">--</td>
+<td id="pwmStatus">--</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<p id="overall"></p>
+<small>
+The damping-ratio calculation applies only
+to the unsaturated, continuous-time PI model
+with negligible sensor delay. The other checks
+use the numerical response. These are simulation
+checks, not proof of real motor performance.
+</small>
+</section>
+
+<section class="card">
+<h2>7. Connection to Homework 2 Modules</h2>
+
+<p>
+This application uses the same first-order plant
+concept and shared numerical solver as P1.
+The motor model can also be studied using P2
+for sensor lag and P3 for sampling effects.
+</p>
+
+<div class="table-scroll">
+<table>
+<thead>
+<tr><th>Module</th><th>Use in Micromouse Design</th></tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="p1.html">P1</a></td>
+<td>Enter motor K, τ, and PID gains to study the speed response.</td>
+</tr>
+<tr>
+<td><a href="p2.html">P2</a></td>
+<td>Investigate encoder feedback lag and its influence on the speed loop.</td>
+</tr>
+<tr>
+<td><a href="p3.html">P3</a></td>
+<td>Investigate discrete PID, sampling time Ts, and anti-windup.</td>
+</tr>
+<tr>
+<td><a href="p4.html">P4</a></td>
+<td>Practice tuning against design specifications.</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<p>
+The values in this page can be transferred
+to the relevant module controls where supported.
+The individual modules remain independently
+accessible and are not modified by this page.
+</p>
+
+<p>
+<strong>Important:</strong> The response simulation
+shown above uses the continuous PID engine.
+Changing Ts updates the code template below;
+it does not change the continuous-time plots.
+Use P3 to evaluate sampling-time effects.
+</p>
+</section>
+
+<section class="card">
+<h2>8. Generated Arduino-Style PID Code</h2>
+
+<p>
+This is an illustrative digital controller
+function using the selected gains and sample time.
+It is not a complete Arduino motor program.
+Encoder input, PWM hardware output and
+motor-driver configuration must be added and
+verified when the hardware is available.
+</p>
+
+<pre id="arduinoCode"></pre>
+
+<button id="copyCode" type="button">
+Copy Code
+</button>
+
+<p id="copyStatus"></p>
+</section>
+
+<section class="card">
+<h2>9. Future Hardware Validation</h2>
+
+<p>Once the drive motor and encoder are ready:</p>
+
+<ol>
+<li>
+Record a PWM step and the corresponding
+encoder-derived motor speed.
+</li>
+<li>
+Determine motor gain K using steady-state
+speed change divided by PWM change.
+</li>
+<li>
+Estimate τ from the 63.2% response point.
+</li>
+<li>
+Replace the illustrative model parameters
+with measured values.
+</li>
+<li>
+Use P1–P3 to retune and evaluate the controller.
+</li>
+<li>
+Compare the actual motor response
+with the simulation.
+</li>
+</ol>
+
+<div class="note">
+<strong>Experimental limitation</strong>
+<p>
+The DC motor and encoder have not yet been
+prepared for testing. Therefore, experimental
+identification and real hardware validation
+have not been conducted. The presented results
+are preliminary numerical predictions.
+The group will discuss this limitation with
+the course instructor.
+</p>
+</div>
+</section>
+
+<script src="pid-core.js"></script>
+<script>
+const defaults = {
+  K: 1,
+  tau: 0.25,
+  target: 0.6,
+  Kp: 1,
+  Ki: 8,
+  Kd: 0,
+  sensorTau: 0,
+  Ts: 0.01
+};
+
+function read(id) {
+  const raw = document.getElementById(id).value;
+  return raw.trim() ? Number(raw) : NaN;
+}
+
+function fmt(v, suffix = "") {
+  return v !== null && Number.isFinite(v)
+    ? v.toFixed(3) + suffix
+    : "Not available";
+}
+
+function status(id, valid, applicable = true) {
+  const el = document.getElementById(id);
+  el.textContent = applicable
+    ? (valid ? "PASS" : "NOT MET")
+    : "N/A";
+  el.className = applicable
+    ? (valid ? "pass" : "fail")
+    : "";
+}
+
+function sample(a) {
+  return a.filter((_, i) => i % 10 === 0);
+}
+
+function updateArduino(Kp, Ki, Kd, Ts) {
+  const f = x => x.toFixed(6);
+
+  const code = `// Shams Micromouse - PID logic template
+// Simulation-derived gains; not hardware tested.
+// Normalized speed and PWM: 0 to 1.
+
+const float Kp = ${f(Kp)}f;
+const float Ki = ${f(Ki)}f;
+const float Kd = ${f(Kd)}f;
+const float Ts = ${f(Ts)}f;
+
+float integral = 0.0f;
+float previousSpeed = 0.0f;
+float filteredD = 0.0f;
+
+// Call at a verified fixed interval Ts.
+// measuredSpeed must come from an encoder.
+float calculatePWM(float targetSpeed,
+                   float measuredSpeed) {
+  float error = targetSpeed - measuredSpeed;
+
+  float rawD =
+    -(measuredSpeed - previousSpeed) / Ts;
+
+  float alpha = Ts / (0.02f + Ts);
+  filteredD += alpha * (rawD - filteredD);
+
+  float candidateI = integral + error * Ts;
+  float candidateU =
+    Kp * error + Ki * candidateI + Kd * filteredD;
+
+  // Conditional anti-windup
+  if (!((candidateU > 1.0f && error > 0) ||
+        (candidateU < 0.0f && error < 0))) {
+    integral = candidateI;
+  }
+
+  float pwm =
+    Kp * error + Ki * integral + Kd * filteredD;
+
+  pwm = constrain(pwm, 0.0f, 1.0f);
+  previousSpeed = measuredSpeed;
+  return pwm;
+}
+
+// Hardware integration still required:
+// - Encoder speed measurement
+// - Timed control loop
+// - Motor driver and PWM configuration
+// - Hardware safety protections
+// - Experimental tuning and validation`;
+
+  document.getElementById("arduinoCode")
+    .textContent = code;
+}
+
+function runSimulation() {
+  const errorEl = document.getElementById("error");
+  errorEl.textContent = "";
+
+  try {
+    if (
+      typeof window.simulatePID !== "function" ||
+      typeof window.calculateMetrics !== "function"
+    ) {
+      throw new Error(
+        "pid-core.js could not be loaded."
+      );
+    }
+
+    const K = read("K");
+    const tau = read("tau");
+    const target = read("target");
+    const Kp = read("Kp");
+    const Ki = read("Ki");
+    const Kd = read("Kd");
+    const sensorTau = read("sensorTau");
+    const Ts = read("Ts");
+
+    const valid = [
+      [K, 0.1, 5],
+      [tau, 0.02, 3],
+      [target, 0.1, 1],
+      [Kp, 0, 100],
+      [Ki, 0, 100],
+      [Kd, 0, 20],
+      [sensorTau, 0, 1],
+      [Ts, 0.001, 0.2]
+    ].every(([v, min, max]) =>
+      Number.isFinite(v) && v >= min && v <= max
+    );
+
+    if (!valid) {
+      throw new Error(
+        "Please check the parameter ranges."
+      );
+    }
+
+    const common = {
+      plantType: "first",
+      K, tau, setpoint: target,
+      duration: 12,
+      dt: 0.001,
+      uMin: 0,
+      uMax: 1,
+      antiWindup: true,
+      sensorTau
+    };
+
+    const pid = window.simulatePID({
+      ...common, Kp, Ki, Kd
+    });
+
+    const pOnly = window.simulatePID({
+      ...common, Kp, Ki: 0, Kd: 0
+    });
+
+    const m = window.calculateMetrics(pid, target);
+
+    const t = sample(pid.time);
+    const speed = sample(pid.output);
+    const pSpeed = sample(pOnly.output);
+    const reference = sample(pid.setpoint);
+    const measured = sample(pid.measured);
+    const pwm = sample(pid.control);
+
+    const options = {
+      responsive: true,
+      displaylogo: false
+    };
+
+    const layout = {
+      xaxis: { title: "Time (s)" },
+      margin: { l: 65, r: 20, t: 45, b: 70 },
+      legend: { orientation: "h", y: -0.3 }
+    };
+
+    Plotly.react("speedPlot", [
+      {
+        x: t, y: reference,
+        name: "Target",
+        mode: "lines",
+        line: { dash: "dash" }
+      },
+      {
+        x: t, y: speed,
+        name: "PID Motor Speed",
+        mode: "lines"
+      },
+      {
+        x: t, y: pSpeed,
+        name: "P-only Speed",
+        mode: "lines"
+      },
+      {
+        x: t, y: measured,
+        name: "Sensor Measurement",
+        mode: "lines",
+        line: { dash: "dot" }
+      }
+    ], {
+      ...layout,
+      title: "Micromouse Motor Speed Response",
+      yaxis: { title: "Normalized Speed" }
+    }, options);
+
+    Plotly.react("pwmPlot", [
+      {
+        x: t, y: pwm,
+        name: "PID PWM",
+        mode: "lines"
+      }
+    ], {
+      ...layout,
+      title: "PWM Control Signal",
+      yaxis: {
+        title: "Normalized PWM",
+        range: [-0.05, 1.05]
+      }
+    }, options);
+
+    document.getElementById("rise").textContent =
+      fmt(m.riseTime, " s");
+    document.getElementById("overshoot").textContent =
+      fmt(m.overshoot, "%");
+    document.getElementById("settling").textContent =
+      fmt(m.settlingTime, " s");
+    document.getElementById("sse").textContent =
+      fmt(m.steadyStateError, "%");
+
+    document.getElementById("settledText").textContent =
+      m.isSettled
+        ? "Response appears stationary near the end of the simulation."
+        : "Response has not settled sufficiently in the simulation window.";
+
+    const zeta = Ki > 0 && Kd === 0
+      ? (1 + K * Kp) /
+          (2 * Math.sqrt(tau * K * Ki))
+      : null;
+
+    const dampingApplicable =
+      zeta !== null && sensorTau === 0;
+
+    document.getElementById("damping").textContent =
+      "Estimated ζ: " + fmt(zeta);
+
+    document.getElementById("dampingNote").textContent =
+      dampingApplicable
+        ? "This is the ideal unsaturated continuous PI estimate."
+        : "The basic PI damping formula does not fully apply to these settings.";
+
+    const zOK = dampingApplicable &&
+      zeta >= 0.6 && zeta <= 0.8;
+
+    const osOK = m.overshoot !== null &&
+      m.overshoot <= 10;
+
+    const tsOK = m.settlingTime !== null &&
+      m.settlingTime <= 3;
+
+    const ssOK = m.steadyStateError !== null &&
+      Math.abs(m.steadyStateError) <= 2;
+
+    const pwmOK = pid.control.every(u =>
+      Number.isFinite(u) &&
+      u >= -1e-9 && u <= 1 + 1e-9
+    );
+
+    document.getElementById("zResult")
+      .textContent = fmt(zeta);
+    document.getElementById("osResult")
+      .textContent = fmt(m.overshoot, "%");
+    document.getElementById("tsResult")
+      .textContent = fmt(m.settlingTime, " s");
+    document.getElementById("ssResult")
+      .textContent = fmt(m.steadyStateError, "%");
+    document.getElementById("pwmResult")
+      .textContent = pwmOK ? "Within limits" : "Out of limits";
+
+    status("zStatus", zOK, dampingApplicable);
+    status("osStatus", osOK);
+    status("tsStatus", tsOK);
+    status("ssStatus", ssOK);
+    status("pwmStatus", pwmOK);
+
+    const targetsMet =
+      (dampingApplicable ? zOK : true) &&
+      osOK && tsOK && ssOK && pwmOK;
+
+    document.getElementById("overall").textContent =
+      targetsMet
+        ? "Selected simulation checks passed. Hardware validation remains pending."
+        : "Some simulation checks are not met. Adjust the controller and rerun.";
+
+    updateArduino(Kp, Ki, Kd, Ts);
+
+  } catch (err) {
+    errorEl.textContent = err.message;
+  }
+}
+
+document.getElementById("simulate")
+  .addEventListener("click", runSimulation);
+
+document.getElementById("reset")
+  .addEventListener("click", () => {
+    Object.entries(defaults).forEach(([id, value]) => {
+      document.getElementById(id).value = value;
+    });
+    runSimulation();
+  });
+
+document.getElementById("copyCode")
+  .addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(
+        document.getElementById("arduinoCode").textContent
+      );
+      document.getElementById("copyStatus")
+        .textContent = "Code copied.";
+    } catch (err) {
+      document.getElementById("copyStatus")
+        .textContent = "Select the code and copy it manually.";
+    }
+  });
+
+runSimulation();
+</script>
+</body>
+</html>
