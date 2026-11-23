@@ -19,8 +19,14 @@
       line-height: 1.6;
     }
 
-    .control { margin: 16px 0; }
-    .plot { width: 100%; height: 420px; }
+    .control {
+      margin: 16px 0;
+    }
+
+    .plot {
+      width: 100%;
+      height: 420px;
+    }
 
     .info {
       padding: 15px;
@@ -29,7 +35,9 @@
       border-radius: 8px;
     }
 
-    input[type="range"] { max-width: 100%; }
+    input[type="range"] {
+      max-width: 100%;
+    }
 
     button {
       padding: 8px 14px;
@@ -37,7 +45,9 @@
       cursor: pointer;
     }
 
-    #predictionResult { font-weight: bold; }
+    #predictionResult {
+      font-weight: bold;
+    }
 
     table {
       width: 100%;
@@ -51,9 +61,13 @@
       text-align: center;
     }
 
-    th { background: #e2eaf5; }
+    th {
+      background: #e2eaf5;
+    }
 
-    .table-container { overflow-x: auto; }
+    .table-container {
+      overflow-x: auto;
+    }
 
     .pass {
       color: green;
@@ -94,14 +108,26 @@
       border-radius: 8px;
       padding: 13px 18px;
       font-weight: bold;
+      transition: background 0.2s;
     }
 
-    .control-link:hover {
+    .control-link:hover,
+    .control-link:focus {
       background: #28568c;
     }
 
+    .module-description {
+      margin-top: 22px;
+    }
+
+    .module-description p {
+      margin: 10px 0;
+    }
+
     @media (max-width: 600px) {
-      .plot { height: 350px; }
+      .plot {
+        height: 350px;
+      }
 
       th, td {
         padding: 6px;
@@ -135,40 +161,88 @@
 
   <!-- HOMEWORK 2 CONTROL SECTION -->
   <section class="control-section" id="control-section">
+
     <h2>Control - Homework 2: PID Control Toolkit</h2>
 
     <p>
       Explore closed-loop feedback control using
-      proportional, integral and derivative action.
-      The PID toolkit extends the dynamic models
-      developed in Homework 1.
+      proportional, integral, and derivative actions.
+      The PID Control Toolkit extends the dynamic
+      characteristics studied in Homework 1.
     </p>
 
+    <p>
+      The toolkit consists of four interactive modules
+      covering PID tuning, sensor lag, digital PID
+      control, and controller tuning challenges.
+    </p>
+
+    <!-- All four PID modules -->
     <div class="control-links">
+
       <a class="control-link" href="p1.html">
         P1 - PID Playground
       </a>
+
       <a class="control-link" href="p2.html">
         P2 - Slow Sensor in the Loop
       </a>
+
+      <a class="control-link" href="p3.html">
+        P3 - Digital PID
+      </a>
+
+      <a class="control-link" href="p4.html">
+        P4 - Tuning Challenge
+      </a>
+
+    </div>
+
+    <!-- Module Descriptions -->
+    <div class="module-description">
+
+      <h3>PID Control Modules</h3>
+
+      <p>
+        <strong>P1 - PID Playground:</strong>
+        Explore first-order and second-order plants,
+        adjust Kp, Ki, and Kd gains, observe
+        closed-loop responses, and evaluate
+        performance metrics.
+      </p>
+
+      <p>
+        <strong>P2 - Slow Sensor in the Loop:</strong>
+        Investigate how sensor lag influences
+        feedback control, measured signals,
+        and system performance.
+      </p>
+
+      <p>
+        <strong>P3 - Digital PID:</strong>
+        Explore discrete-time PID control,
+        sampling time effects, and digital
+        controller behavior.
+      </p>
+
+      <p>
+        <strong>P4 - Tuning Challenge:</strong>
+        Apply PID tuning concepts to interactive
+        challenges and evaluate controller
+        performance.
+      </p>
+
     </div>
 
     <p>
       <small>
-        P1 includes first-order and second-order
-        systems, live PID tuning, numerical simulation,
-        control signal saturation, performance metrics
-        and validation checks.
+        ENCS4380 - Interfacing Techniques |
+        Homework 2 | Group 35
       </small>
     </p>
 
-    <p>
-      <small>
-        Additional PID modules will be linked here
-        as they are completed by the group.
-      </small>
-    </p>
   </section>
+  <!-- END HOMEWORK 2 CONTROL SECTION -->
 
   <!-- HOMEWORK 1 MODULE 1 -->
   <h2>Module 1: First-Order Response</h2>
@@ -349,10 +423,12 @@
     const inputType = document.getElementById("inputType");
     const rampInfo = document.getElementById("rampInfo");
 
+    // First-order step response
     function stepResponse(t, K, tau) {
       return K * (1 - Math.exp(-t / tau));
     }
 
+    // Update one validation row
     function setValidationRow(
       number, expected, calculated, tolerance
     ) {
@@ -381,6 +457,7 @@
       return passed;
     }
 
+    // Validation Test 1
     function updateValidation(K, tau) {
       const finalValue = K;
       const tolerance = 0.005 * finalValue;
@@ -417,6 +494,7 @@
       overall.className = allPassed ? "pass" : "fail";
     }
 
+    // Update all plots and calculations
     function updatePlot() {
       const tau = Number(tauSlider.value);
       const K = Number(gainSlider.value);
@@ -430,12 +508,14 @@
         "kValue"
       ).textContent = K;
 
+      // Logarithmic error slope
       const slope = -1 / tau;
 
       document.getElementById(
         "slopeValue"
       ).textContent = slope.toFixed(4);
 
+      // Ramp information
       if (type === "ramp") {
         rampInfo.style.display = "block";
 
@@ -454,13 +534,16 @@
         rampInfo.style.display = "none";
       }
 
+      // Main plot arrays
       const t = [];
       const y = [];
       const ideal = [];
 
+      // Error plot arrays
       const errorTime = [];
       const errorFraction = [];
 
+      // Fixed time range: 0 to 50 seconds
       for (let i = 0; i <= 200; i++) {
         const time = i * 50 / 200;
 
@@ -473,6 +556,7 @@
           ideal.push(K);
 
         } else {
+          // Unit ramp response
           const output = K * (
             time - tau * (
               1 - Math.exp(-time / tau)
@@ -484,6 +568,7 @@
         }
       }
 
+      // Separate time scale for error plot: 0 to 5 tau
       for (let i = 0; i <= 200; i++) {
         const time = i * 5 * tau / 200;
 
@@ -493,6 +578,7 @@
         );
       }
 
+      // Main output curve
       const traces = [
         {
           x: t,
@@ -504,6 +590,7 @@
       ];
 
       if (type === "step") {
+        // 63.2% and 95% markers
         traces.push({
           x: [tau, 3 * tau],
           y: [
@@ -518,6 +605,7 @@
         });
 
       } else {
+        // Ideal ramp
         traces.push({
           x: t,
           y: ideal,
@@ -531,6 +619,7 @@
         });
       }
 
+      // Main response plot
       Plotly.react("plot", traces, {
         title: type === "step"
           ? "First-Order Step Response"
@@ -558,6 +647,7 @@
         responsive: true
       });
 
+      // Log Error Fraction Plot
       Plotly.react("errorPlot", [
         {
           x: errorTime,
@@ -591,9 +681,11 @@
         responsive: true
       });
 
+      // Validation
       updateValidation(K, tau);
     }
 
+    // Predict, then Check
     const predictionSelect =
       document.getElementById("prediction");
 
@@ -612,6 +704,7 @@
         return;
       }
 
+      // Unlock tau slider after prediction
       tauSlider.disabled = false;
 
       document.getElementById(
@@ -629,10 +722,12 @@
       }
     });
 
+    // Live updates
     tauSlider.addEventListener("input", updatePlot);
     gainSlider.addEventListener("input", updatePlot);
     inputType.addEventListener("change", updatePlot);
 
+    // Initial rendering
     updatePlot();
   </script>
 
