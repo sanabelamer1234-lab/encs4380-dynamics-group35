@@ -287,12 +287,40 @@ function searchDesigns(plant, duration) {
 function buildChallenge(difficulty = "normal") {
   const factor = DIFFICULTIES[difficulty].factor;
 
+  // Fail early with a clear reason if the shared engine is
+  // missing or broken (for example pid-core.js not loaded).
+  if (
+    typeof simulatePID !== "function" ||
+    typeof calculateMetrics !== "function"
+  ) {
+    throw new Error(
+      "pid-core.js did not load. Put p4.html, p4.js and " +
+      "pid-core.js in the same folder."
+    );
+  }
+
+  const probe = evaluate(
+    { plantType: "first", K: 1, tau: 1, zeta: 0.5, wn: 2 },
+    { Kp: 1, Ki: 0, Kd: 0 },
+    5,
+    SEARCH_DT
+  );
+
+  if (!probe.ok) {
+    throw new Error(
+      "Simulation engine error: " + probe.error
+    );
+  }
+
+  const why = { noDesign: 0, refRun: 0, refSpec: 0 };
+
   for (let attempt = 0; attempt < 8; attempt++) {
     const plant = randomPlant();
     const duration = simDuration(plant);
     const designs = searchDesigns(plant, duration);
 
     if (designs.length === 0) {
+      why.noDesign++;
       continue;
     }
 
@@ -313,6 +341,7 @@ function buildChallenge(difficulty = "normal") {
     const ev = evaluate(plant, reference, duration, DT);
 
     if (!ev.ok || ev.metrics.settlingTime === null) {
+      why.refRun++;
       continue;
     }
 
@@ -335,6 +364,7 @@ function buildChallenge(difficulty = "normal") {
     const parts = checkSpec(spec, ev);
 
     if (!parts.every(p => p.pass)) {
+      why.refSpec++;
       continue;
     }
 
@@ -348,7 +378,13 @@ function buildChallenge(difficulty = "normal") {
     };
   }
 
-  throw new Error("Could not build a challenge. Try again.");
+  console.error("P4 buildChallenge failed:", why);
+
+  throw new Error(
+    "Could not build a challenge (no design found: " +
+    why.noDesign + ", reference run failed: " + why.refRun +
+    ", reference missed spec: " + why.refSpec + "). Try again."
+  );
 }
 
 
